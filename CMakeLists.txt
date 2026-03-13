@@ -25,14 +25,26 @@ juce_add_plugin(WestPatch
 
 juce_generate_juce_header(WestPatch)
 
+# Plocka upp alla sourcefiler automatiskt
+file(GLOB_RECURSE WESTPATCH_SOURCES
+    CONFIGURE_DEPENDS
+    Source/*.cpp
+)
+
+file(GLOB_RECURSE WESTPATCH_HEADERS
+    CONFIGURE_DEPENDS
+    Source/*.h
+)
+
 target_sources(WestPatch
     PRIVATE
-        Source/PluginProcessor.cpp
-        Source/PluginProcessor.h
-        Source/PluginEditor.cpp
-        Source/PluginEditor.h
-        Source/Wavefolder.cpp
-        Source/Wavefolder.h
+        ${WESTPATCH_SOURCES}
+        ${WESTPATCH_HEADERS}
+)
+
+target_include_directories(WestPatch
+    PRIVATE
+        Source
 )
 target_compile_definitions(WestPatch
     PUBLIC

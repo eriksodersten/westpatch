@@ -1,13 +1,6 @@
-//
-//  Wavefolder.cpp
-//  WestPatch
-//
-//  Created by Erik Södersten on 2026-03-13.
-//
-
 #include "Wavefolder.h"
 
-float Wavefolder::process (float input, float amount) const
+float Wavefolder::process (float input, float amount) const noexcept
 {
     float x = input * amount;
 
