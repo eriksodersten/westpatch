@@ -45,7 +45,7 @@ public:
 
     float funcBRate = 2.0f;
     float funcBDepth = 20.0f;
-    bool funcBCycle = true;
+    bool funcBCycle = false;
 
     float uncertaintyRate = 1.2f;
     float uncertaintySmoothDepth = 0.8f;

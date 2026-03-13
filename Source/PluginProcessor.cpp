@@ -155,6 +155,132 @@ bool WestPatchAudioProcessor::hasActiveRoutingForDestination (ModDestination des
 }
 
 //==============================================================================
+float WestPatchAudioProcessor::renderSample (float inputSample) noexcept
+{
+    constexpr float smoothingCoeff = 0.001f;
+
+    SignalBus bus;
+
+    smoothedFoldAmount += smoothingCoeff * (foldAmount - smoothedFoldAmount);
+    smoothedAttackTime += smoothingCoeff * (attackTime - smoothedAttackTime);
+    smoothedReleaseTime += smoothingCoeff * (releaseTime - smoothedReleaseTime);
+    smoothedLpgAmount += smoothingCoeff * (lpgAmount - smoothedLpgAmount);
+    smoothedModDepth += smoothingCoeff * (modDepth - smoothedModDepth);
+
+    smoothedFuncBRate += smoothingCoeff * (funcBRate - smoothedFuncBRate);
+    smoothedFuncBDepth += smoothingCoeff * (funcBDepth - smoothedFuncBDepth);
+
+    smoothedUncertaintyRate += smoothingCoeff * (uncertaintyRate - smoothedUncertaintyRate);
+    smoothedUncertaintySmoothDepth += smoothingCoeff * (uncertaintySmoothDepth - smoothedUncertaintySmoothDepth);
+    smoothedUncertaintySteppedDepth += smoothingCoeff * (uncertaintySteppedDepth - smoothedUncertaintySteppedDepth);
+
+    smoothedSynthLevel += smoothingCoeff * (synthLevel - smoothedSynthLevel);
+    smoothedInputLevel += smoothingCoeff * (inputLevel - smoothedInputLevel);
+    smoothedNoiseLevel += smoothingCoeff * (noiseLevel - smoothedNoiseLevel);
+
+    bus.env = functionGenerator281.process (
+        smoothedAttackTime,
+        smoothedReleaseTime
+    );
+
+    const float modEnvCoeff = isNoteOn
+        ? (1.0f / juce::jmax (1.0f, modAttackTime * static_cast<float> (currentSampleRate)))
+        : (1.0f / juce::jmax (1.0f, modReleaseTime * static_cast<float> (currentSampleRate)));
+
+    if (isNoteOn)
+        modEnvelope += (1.0f - modEnvelope) * modEnvCoeff;
+    else
+        modEnvelope += (0.0f - modEnvelope) * modEnvCoeff;
+
+    bus.modEnv = modEnvelope;
+
+    funcBPhase += smoothedFuncBRate / static_cast<float> (currentSampleRate);
+    if (funcBPhase >= 1.0f)
+        funcBPhase -= 1.0f;
+
+    const float functionBValue =
+        std::sin (2.0f * juce::MathConstants<float>::pi * funcBPhase) * smoothedFuncBDepth;
+
+    uncertaintyPhase += smoothedUncertaintyRate / static_cast<float> (currentSampleRate);
+    if (uncertaintyPhase >= 1.0f)
+    {
+        uncertaintyPhase -= 1.0f;
+        smoothRandomTarget = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
+        steppedRandomValue = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
+    }
+
+    smoothRandomValue += 0.001f * (smoothRandomTarget - smoothRandomValue);
+
+    const float uncertaintySmoothValue =
+        smoothRandomValue * smoothedUncertaintySmoothDepth;
+
+    const float uncertaintySteppedValue =
+        steppedRandomValue * smoothedUncertaintySteppedDepth;
+
+    bus.pitchMod = 0.0f;
+    bus.foldMod = 0.0f;
+    bus.lpgCV = 0.0f;
+
+    bus.pitchMod += functionBValue
+        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Pitch];
+    bus.foldMod += functionBValue
+        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Fold];
+    bus.lpgCV += functionBValue
+        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::LPG];
+
+    bus.pitchMod += uncertaintySmoothValue
+        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Pitch];
+    bus.foldMod += uncertaintySmoothValue
+        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Fold];
+    bus.lpgCV += uncertaintySmoothValue
+        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::LPG];
+
+    bus.pitchMod += uncertaintySteppedValue
+        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Pitch];
+    bus.foldMod += uncertaintySteppedValue
+        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Fold];
+    bus.lpgCV += uncertaintySteppedValue
+        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::LPG];
+
+    const float modulatedFrequency = juce::jmax (20.0f, frequency + bus.pitchMod);
+
+    bus.osc = oscillator.process (modulatedFrequency);
+    bus.noise = noiseSource.process();
+    bus.extIn = inputSample;
+
+    bus.synthIn = bus.osc * smoothedSynthLevel;
+    bus.noiseIn = bus.noise * smoothedNoiseLevel;
+    bus.extScaled = bus.extIn * smoothedInputLevel;
+
+    const float foldValue = smoothedFoldAmount + bus.foldMod;
+
+    bus.synthFolded = wavefolder.process (bus.synthIn, foldValue);
+    bus.noiseFolded = wavefolder.process (bus.noiseIn, foldValue);
+    bus.extFolded   = wavefolder.process (bus.extScaled, foldValue);
+
+    bus.synthBus = bus.synthFolded + bus.noiseFolded;
+
+    const float lpgEnvelope = bus.env * bus.env;
+    const float ampEnvelope = std::sqrt (juce::jmax (0.0f, bus.env));
+
+    bus.lpgOut = lowPassGate.process (
+        bus.synthBus,
+        lpgEnvelope,
+        smoothedLpgAmount,
+        bus.lpgCV
+    );
+
+    if (gateExternalInput)
+        bus.extOut = bus.extFolded * ampEnvelope;
+    else
+        bus.extOut = bus.extFolded;
+
+    bus.output = (bus.lpgOut + bus.extOut) * outputLevel;
+
+    return bus.output;
+}
+
+//==============================================================================
 void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                             juce::MidiBuffer& midiMessages)
 {
@@ -192,121 +318,10 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     const float* inputLeft = totalNumInputChannels > 0 ? buffer.getReadPointer (0) : nullptr;
 
-    constexpr float smoothingCoeff = 0.001f;
-
     for (int sample = 0; sample < numSamples; ++sample)
     {
-        smoothedFoldAmount += smoothingCoeff * (foldAmount - smoothedFoldAmount);
-        smoothedAttackTime += smoothingCoeff * (attackTime - smoothedAttackTime);
-        smoothedReleaseTime += smoothingCoeff * (releaseTime - smoothedReleaseTime);
-        smoothedLpgAmount += smoothingCoeff * (lpgAmount - smoothedLpgAmount);
-        smoothedModDepth += smoothingCoeff * (modDepth - smoothedModDepth);
-
-        smoothedFuncBRate += smoothingCoeff * (funcBRate - smoothedFuncBRate);
-        smoothedFuncBDepth += smoothingCoeff * (funcBDepth - smoothedFuncBDepth);
-
-        smoothedUncertaintyRate += smoothingCoeff * (uncertaintyRate - smoothedUncertaintyRate);
-        smoothedUncertaintySmoothDepth += smoothingCoeff * (uncertaintySmoothDepth - smoothedUncertaintySmoothDepth);
-        smoothedUncertaintySteppedDepth += smoothingCoeff * (uncertaintySteppedDepth - smoothedUncertaintySteppedDepth);
-
-        smoothedSynthLevel += smoothingCoeff * (synthLevel - smoothedSynthLevel);
-        smoothedInputLevel += smoothingCoeff * (inputLevel - smoothedInputLevel);
-        smoothedNoiseLevel += smoothingCoeff * (noiseLevel - smoothedNoiseLevel);
-
-        const float envelope = functionGenerator281.process (
-            smoothedAttackTime,
-            smoothedReleaseTime
-        );
-
-        const float modEnvCoeff = isNoteOn
-            ? (1.0f / juce::jmax (1.0f, modAttackTime * static_cast<float> (currentSampleRate)))
-            : (1.0f / juce::jmax (1.0f, modReleaseTime * static_cast<float> (currentSampleRate)));
-
-        if (isNoteOn)
-            modEnvelope += (1.0f - modEnvelope) * modEnvCoeff;
-        else
-            modEnvelope += (0.0f - modEnvelope) * modEnvCoeff;
-
-        funcBPhase += smoothedFuncBRate / static_cast<float> (currentSampleRate);
-        if (funcBPhase >= 1.0f)
-            funcBPhase -= 1.0f;
-
-        const float functionBValue =
-            std::sin (2.0f * juce::MathConstants<float>::pi * funcBPhase) * smoothedFuncBDepth;
-
-        uncertaintyPhase += smoothedUncertaintyRate / static_cast<float> (currentSampleRate);
-        if (uncertaintyPhase >= 1.0f)
-        {
-            uncertaintyPhase -= 1.0f;
-            smoothRandomTarget = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
-            steppedRandomValue = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
-        }
-
-        smoothRandomValue += 0.001f * (smoothRandomTarget - smoothRandomValue);
-
-        float pitchMod = 0.0f;
-        float foldMod = 0.0f;
-        float lpgCV = 0.0f;
-
-        const float uncertaintySmoothValue =
-            smoothRandomValue * smoothedUncertaintySmoothDepth;
-
-        const float uncertaintySteppedValue =
-            steppedRandomValue * smoothedUncertaintySteppedDepth;
-
-        pitchMod += functionBValue
-            * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Pitch];
-        foldMod += functionBValue
-            * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Fold];
-        lpgCV += functionBValue
-            * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::LPG];
-
-        pitchMod += uncertaintySmoothValue
-            * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Pitch];
-        foldMod += uncertaintySmoothValue
-            * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Fold];
-        lpgCV += uncertaintySmoothValue
-            * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::LPG];
-
-        pitchMod += uncertaintySteppedValue
-            * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Pitch];
-        foldMod += uncertaintySteppedValue
-            * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Fold];
-        lpgCV += uncertaintySteppedValue
-            * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::LPG];
-
-        const float modulatedFrequency = juce::jmax (20.0f, frequency + pitchMod);
-
-        const float oscSample = oscillator.process (modulatedFrequency);
-        const float noiseSample = noiseSource.process();
-        const float extIn = inputLeft != nullptr ? inputLeft[sample] : 0.0f;
-
-        const float synthIn = oscSample * smoothedSynthLevel;
-        const float noiseIn = noiseSample * smoothedNoiseLevel;
-        const float extScaled = extIn * smoothedInputLevel;
-
-        const float foldValue = smoothedFoldAmount + foldMod;
-
-        const float synthFolded = wavefolder.process (synthIn, foldValue);
-        const float noiseFolded = wavefolder.process (noiseIn, foldValue);
-        const float extFolded   = wavefolder.process (extScaled, foldValue);
-
-        const float synthBus = synthFolded + noiseFolded;
-
-        const float lpgOut = lowPassGate.process (
-            synthBus,
-            envelope,
-            smoothedLpgAmount,
-            lpgCV
-        );
-
-        float extOut = 0.0f;
-        if (gateExternalInput)
-            extOut = extFolded * envelope;
-        else
-            extOut = extFolded;
-
-        const float value = (lpgOut + extOut) * outputLevel;
+        const float inputSample = inputLeft != nullptr ? inputLeft[sample] : 0.0f;
+        const float value = renderSample (inputSample);
 
         leftOut[sample] = value;
         if (rightOut != nullptr)
