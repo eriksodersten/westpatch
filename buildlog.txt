@@ -1,0 +1,141 @@
+Change Dir: '/Users/eriksode/Projects/WestPatch/build'
+
+Run Build Command(s): /usr/bin/xcodebuild -project WestPatch.xcodeproj build -configuration Debug -parallelizeTargets -hideShellScriptEnvironment -target ALL_BUILD
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project WestPatch.xcodeproj build -configuration Debug -parallelizeTargets -hideShellScriptEnvironment -target ALL_BUILD
+
+ComputePackagePrebuildTargetDependencyGraph
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (4 targets)
+    Target 'ALL_BUILD' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch_AU' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'WestPatch_AU' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'ZERO_CHECK' in project 'WestPatch' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -x objective-c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -x c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/libtool -V
+
+Build description signature: 11ea51b8458a78a5fa10c3e317a63a00
+Build description path: /Users/eriksode/Projects/WestPatch/build/build/XCBuildData/11ea51b8458a78a5fa10c3e317a63a00.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
+    cd /Users/eriksode/Projects/WestPatch/build/WestPatch.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -o /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
+
+PhaseScriptExecution Generate\ CMakeFiles/ZERO_CHECK /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/ZERO_CHECK.build/Script-1102B11BABBFA2DCCFACEDA8.sh (in target 'ZERO_CHECK' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    /bin/sh -c /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/ZERO_CHECK.build/Script-1102B11BABBFA2DCCFACEDA8.sh
+/usr/local/bin/cmake -P /Users/eriksode/Projects/WestPatch/build/CMakeFiles/VerifyGlobs.cmake
+
+PhaseScriptExecution Generate\ WestPatch_artefacts/JuceLibraryCode/JuceHeader.h /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Script-BDADFFBBFCDFFADCFDE4A847.sh (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    /bin/sh -c /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Script-BDADFFBBFCDFFADCFDE4A847.sh
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_formats.o /Users/eriksode/JUCE/modules/juce_audio_formats/juce_audio_formats.mm normal arm64 objective-c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-implicit-atomic-properties -Wno-objc-interface-ivars -Wno-arc-repeated-use-of-weak -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wno-undeclared-selector -Wno-deprecated-implementations -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_formats.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_formats.dia -c /Users/eriksode/JUCE/modules/juce_audio_formats/juce_audio_formats.mm -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_formats.o
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_devices.o /Users/eriksode/JUCE/modules/juce_audio_devices/juce_audio_devices.mm normal arm64 objective-c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-implicit-atomic-properties -Wno-objc-interface-ivars -Wno-arc-repeated-use-of-weak -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wno-undeclared-selector -Wno-deprecated-implementations -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_devices.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_devices.dia -c /Users/eriksode/JUCE/modules/juce_audio_devices/juce_audio_devices.mm -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_devices.o
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_basics.o /Users/eriksode/JUCE/modules/juce_audio_basics/juce_audio_basics.mm normal arm64 objective-c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-implicit-atomic-properties -Wno-objc-interface-ivars -Wno-arc-repeated-use-of-weak -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wno-undeclared-selector -Wno-deprecated-implementations -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_basics.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_basics.dia -c /Users/eriksode/JUCE/modules/juce_audio_basics/juce_audio_basics.mm -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_audio_basics.o
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_gui_basics.o /Users/eriksode/JUCE/modules/juce_gui_basics/juce_gui_basics.mm normal arm64 objective-c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-implicit-atomic-properties -Wno-objc-interface-ivars -Wno-arc-repeated-use-of-weak -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-selector -Wno-strict-selector-match -Wno-undeclared-selector -Wno-deprecated-implementations -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wprotocol -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_gui_basics.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_gui_basics.dia -c /Users/eriksode/JUCE/modules/juce_gui_basics/juce_gui_basics.mm -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/juce_gui_basics.o
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginEditor.o /Users/eriksode/Projects/WestPatch/Source/PluginEditor.cpp normal arm64 c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginEditor.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginEditor.dia -c /Users/eriksode/Projects/WestPatch/Source/PluginEditor.cpp -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginEditor.o
+
+CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginProcessor.o /Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp normal arm64 c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Using response file: /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c++ -ivfsstatcache /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-non-virtual-dtor -Wno-overloaded-virtual -Wno-exit-time-destructors -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wno-newline-eof -Wno-c++11-extensions -Wno-implicit-fallthrough -fstrict-aliasing -Wdeprecated-declarations -Winvalid-offsetof -Wno-sign-conversion -Wno-infinite-recursion -Wno-move -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-range-loop-analysis -Wno-semicolon-before-method-body -Wall -Wshadow-all -Wshorten-64-to-32 -Wstrict-aliasing -Wuninitialized -Wunused-parameter -Wconversion -Wsign-compare -Wint-conversion -Wconditional-uninitialized -Wconstant-conversion -Wsign-conversion -Wbool-conversion -Wextra-semi -Wunreachable-code -Wcast-align -Wshift-sign-overflow -Wmissing-prototypes -Wnullable-to-nonnull-conversion -Wno-ignored-qualifiers -Wswitch-enum -Wpedantic -Wdeprecated -Wfloat-equal -Wmissing-field-initializers -Wzero-as-null-pointer-constant -Wunused-private-field -Woverloaded-virtual -Wreorder -Winconsistent-missing-destructor-override @/Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp -MMD -MT dependencies -MF /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginProcessor.d --serialize-diagnostics /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginProcessor.dia -c /Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginProcessor.o
+/Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp:75:25: warning: implicit conversion loses floating-point precision: 'double' to 'float' [-Wimplicit-float-conversion]
+   75 |             frequency = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote);
+      |                       ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp:218:52: warning: implicit conversion loses floating-point precision: 'double' to 'const float' [-Wimplicit-float-conversion]
+  218 |         const float synthSample = std::sin (phase) * smoothedSynthLevel;
+      |                     ~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~
+/Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp:226:35: error: type 'Wavefolder' does not provide a call operator
+  226 |         const float synthFolded = wavefolder(
+      |                                   ^~~~~~~~~~
+/Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp:231:33: error: type 'Wavefolder' does not provide a call operator
+  231 |         const float extFolded = wavefolder(
+      |                                 ^~~~~~~~~~
+/Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp:236:35: error: type 'Wavefolder' does not provide a call operator
+  236 |         const float noiseFolded = wavefolder(
+      |                                   ^~~~~~~~~~
+2 warnings and 3 errors generated.
+
+ProcessProductPackaging /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/JuceLibraryCode/WestPatch_AU.entitlements /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent (in target 'WestPatch_AU' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    
+    Entitlements:
+    
+    {
+}
+    
+    builtin-productPackagingUtility /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/JuceLibraryCode/WestPatch_AU.entitlements -entitlements -format xml -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent
+
+ProcessProductPackagingDER /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent.der (in target 'WestPatch_AU' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    /usr/bin/derq query -f xml -i /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent -o /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/WestPatch.component.xcent.der --raw
+
+note: Run script build phase 'Generate CMakeFiles/ALL_BUILD' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ALL_BUILD' from project 'WestPatch')
+note: Run script build phase 'Generate CMakeFiles/ZERO_CHECK' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ZERO_CHECK' from project 'WestPatch')
+note: Run script build phase 'CMake PostBuild Rules' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'WestPatch_AU' from project 'WestPatch')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	CompileC /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/Objects-normal/arm64/PluginProcessor.o /Users/eriksode/Projects/WestPatch/Source/PluginProcessor.cpp normal arm64 c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'WestPatch' from project 'WestPatch')
+(1 failure)
+
