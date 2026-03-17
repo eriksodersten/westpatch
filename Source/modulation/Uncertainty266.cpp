@@ -34,7 +34,7 @@ float Uncertainty266::nextUniformBipolar() noexcept
     rngState = 1664525u * rngState + 1013904223u;
 
     const float normalized =
-        static_cast<float>((rngState >> 8) & 0x00FFFFFFu) * (1.0f / 16777215.0f);
+        static_cast<float> ((rngState >> 8) & 0x00FFFFFFu) * (1.0f / 16777215.0f);
 
     return normalized * 2.0f - 1.0f;
 }
@@ -63,7 +63,7 @@ Uncertainty266::Outputs Uncertainty266::process (const Params& params) noexcept
 
     //====================================================
     // Clock phase
-    phase += clampedRate / static_cast<float>(sampleRate);
+    phase += clampedRate / static_cast<float> (sampleRate);
 
     bool event = false;
 
@@ -111,11 +111,17 @@ Uncertainty266::Outputs Uncertainty266::process (const Params& params) noexcept
     }
 
     //====================================================
-    // Slow bias drift
-    biasValue += 0.00075f * (biasTarget - biasValue);
+    // Rate-aware drift / slew
+    const float normalizedRate = std::clamp (clampedRate / 10.0f, 0.0f, 1.0f);
 
-    // Smooth slew
-    smoothValue += 0.0025f * (smoothTarget - smoothValue);
+    const float biasCoeff =
+        0.00005f + (0.0010f - 0.00005f) * normalizedRate;
+
+    const float smoothCoeff =
+        0.00015f + (0.0030f - 0.00015f) * normalizedRate;
+
+    biasValue += biasCoeff * (biasTarget - biasValue);
+    smoothValue += smoothCoeff * (smoothTarget - smoothValue);
 
     // Pulse decay
     pulseValue *= 0.90f;
@@ -124,10 +130,10 @@ Uncertainty266::Outputs Uncertainty266::process (const Params& params) noexcept
         pulseValue = 0.0f;
 
     //====================================================
-    out.smooth = smoothValue * clampedSmoothAmt;
+    out.smooth  = smoothValue * clampedSmoothAmt;
     out.stepped = steppedValue;
-    out.bias = biasValue;
-    out.pulse = pulseValue;
+    out.bias    = biasValue;
+    out.pulse   = pulseValue;
 
     return out;
 }
