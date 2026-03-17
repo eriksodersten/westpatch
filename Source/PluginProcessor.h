@@ -7,6 +7,7 @@
 #include "dsp/Wavefolder.h"
 #include "dsp/LowPassGate.h"
 #include "modulation/FunctionGenerator281.h"
+#include "modulation/Uncertainty266.h"
 #include "core/SignalBus.h"
 
 //==============================================================================
@@ -100,6 +101,7 @@ private:
     Wavefolder wavefolder;
     LowPassGate lowPassGate;
     FunctionGenerator281 functionGenerator281;
+    Uncertainty266 uncertainty266;
 
     // Engine state
     double currentSampleRate = 44100.0;
@@ -127,7 +129,8 @@ private:
     float smoothedFuncBRate = 2.0f;
     float smoothedFuncBDepth = 20.0f;
 
-    // Uncertainty
+    // Legacy uncertainty state
+    // Låt dessa vara kvar tills PluginProcessor.cpp är helt flyttad till Uncertainty266
     float uncertaintyPhase = 0.0f;
     float smoothRandomValue = 0.0f;
     float smoothRandomTarget = 0.0f;

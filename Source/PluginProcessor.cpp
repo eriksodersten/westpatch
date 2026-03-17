@@ -92,6 +92,7 @@ void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int /*samplesPer
     lowPassGate.prepare (sampleRate);
     functionGenerator281.prepare (sampleRate);
     functionGenerator281.setCycle (funcBCycle);
+    uncertainty266.prepare (sampleRate);
 
     smoothedFoldAmount = foldAmount;
     smoothedAttackTime = attackTime;
@@ -201,21 +202,18 @@ float WestPatchAudioProcessor::renderSample (float inputSample) noexcept
     const float functionBValue =
         std::sin (2.0f * juce::MathConstants<float>::pi * funcBPhase) * smoothedFuncBDepth;
 
-    uncertaintyPhase += smoothedUncertaintyRate / static_cast<float> (currentSampleRate);
-    if (uncertaintyPhase >= 1.0f)
-    {
-        uncertaintyPhase -= 1.0f;
-        smoothRandomTarget = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
-        steppedRandomValue = juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f;
-    }
+    Uncertainty266::Params uncertaintyParams;
+    uncertaintyParams.rate = smoothedUncertaintyRate;
+    uncertaintyParams.smoothAmount = smoothedUncertaintySmoothDepth;
+    uncertaintyParams.steppedAmount = smoothedUncertaintySteppedDepth;
+    uncertaintyParams.density = 0.75f;
+    uncertaintyParams.correlation = 0.45f;
+    uncertaintyParams.spread = 1.0f;
 
-    smoothRandomValue += 0.001f * (smoothRandomTarget - smoothRandomValue);
+    const auto uncertaintyOut = uncertainty266.process (uncertaintyParams);
 
-    const float uncertaintySmoothValue =
-        smoothRandomValue * smoothedUncertaintySmoothDepth;
-
-    const float uncertaintySteppedValue =
-        steppedRandomValue * smoothedUncertaintySteppedDepth;
+    const float uncertaintySmoothValue = uncertaintyOut.smooth;
+    const float uncertaintySteppedValue = uncertaintyOut.stepped;
 
     bus.pitchMod = 0.0f;
     bus.foldMod = 0.0f;
@@ -248,7 +246,7 @@ float WestPatchAudioProcessor::renderSample (float inputSample) noexcept
     bus.noise = noiseSource.process();
     bus.extIn = inputSample;
 
-    bus.synthIn = bus.osc * smoothedSynthLevel;
+    bus.synthIn = bus.osc * smoothedSynthLevel * 1.15f;
     bus.noiseIn = bus.noise * smoothedNoiseLevel;
     bus.extScaled = bus.extIn * smoothedInputLevel;
 
@@ -260,8 +258,8 @@ float WestPatchAudioProcessor::renderSample (float inputSample) noexcept
 
     bus.synthBus = bus.synthFolded + bus.noiseFolded;
 
-    const float lpgEnvelope = bus.env * bus.env;
-    const float ampEnvelope = std::sqrt (juce::jmax (0.0f, bus.env));
+    const float lpgEnvelope = bus.env * (1.5f - 0.5f * bus.env);
+    const float ampEnvelope = bus.env;
 
     bus.lpgOut = lowPassGate.process (
         bus.synthBus,
