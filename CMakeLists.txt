@@ -25,6 +25,21 @@ juce_add_plugin(WestPatch
 
 juce_generate_juce_header(WestPatch)
 
+juce_add_binary_data(WestPatchAssets
+    HEADER_NAME WestPatchBinaryData.h
+    NAMESPACE WestPatchBinaryData
+    SOURCES
+        Assets/background.jpg
+)
+target_link_libraries(WestPatch
+    PRIVATE
+        WestPatchAssets
+        juce::juce_audio_utils
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+)
+
 # Plocka upp alla sourcefiler automatiskt
 file(GLOB_RECURSE WESTPATCH_SOURCES
     CONFIGURE_DEPENDS

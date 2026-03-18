@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
+//==============================================================================
 class WestPatchAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
@@ -15,33 +16,103 @@ public:
 private:
     WestPatchAudioProcessor& audioProcessor;
 
-    juce::Slider foldSlider;
+    juce::Image backgroundImage;
+
+    //==========================================================================
+    // Group
+    juce::Label groupModeLabel;
+    juce::ComboBox groupModeBox;
+
+    //==========================================================================
+    // Voice
+    juce::Label attackLabel;
     juce::Slider attackSlider;
+
+    juce::Label releaseLabel;
     juce::Slider releaseSlider;
+
+    juce::Label foldLabel;
+    juce::Slider foldSlider;
+
+    juce::Label lpgLabel;
     juce::Slider lpgSlider;
 
+    //==========================================================================
+    // 281
+    juce::Label funcBRateLabel;
     juce::Slider funcBRateSlider;
+
+    juce::Label funcBDepthLabel;
     juce::Slider funcBDepthSlider;
 
+    juce::ToggleButton funcBCycleButton;
+
+    //==========================================================================
+    // 266
+    juce::Label uncertaintyRateLabel;
     juce::Slider uncertaintyRateSlider;
+
+    juce::Label uncertaintySmoothLabel;
     juce::Slider uncertaintySmoothSlider;
+
+    juce::Label uncertaintySteppedLabel;
     juce::Slider uncertaintySteppedSlider;
 
+    //==========================================================================
+    // Mixer
+    juce::Label synthLevelLabel;
     juce::Slider synthLevelSlider;
+
+    juce::Label inputLevelLabel;
     juce::Slider inputLevelSlider;
+
+    juce::Label noiseLevelLabel;
     juce::Slider noiseLevelSlider;
 
+    juce::ToggleButton gateInputButton;
+
+    //==========================================================================
+    // 266 direct routing / tests
+    juce::Label test266SmoothToFoldLabel;
     juce::Slider test266SmoothToFoldSlider;
+
+    juce::Label test266SteppedToPitchLabel;
     juce::Slider test266SteppedToPitchSlider;
+
+    juce::Label test266BiasToLpgLabel;
     juce::Slider test266BiasToLpgSlider;
+
+    juce::Label test266PulseToTriggerLabel;
     juce::Slider test266PulseToTriggerSlider;
 
+    //==========================================================================
+    // Lane / complex
+    juce::Label detuneAmountLabel;
     juce::Slider detuneAmountSlider;
+
+    juce::Label stereoSpreadLabel;
     juce::Slider stereoSpreadSlider;
 
+    juce::Label complexModRatioLabel;
     juce::Slider complexModRatioSlider;
+
+    juce::Label complexFmAmountLabel;
     juce::Slider complexFmAmountSlider;
+
+    juce::Label complexOscMixLabel;
     juce::Slider complexOscMixSlider;
+
+    //==========================================================================
+    // Matrix
+    juce::Label matrixTitleLabel;
+
+    juce::Label matrixSource281Label;
+    juce::Label matrixSource266SmoothLabel;
+    juce::Label matrixSource266SteppedLabel;
+
+    juce::Label matrixPitchLabel;
+    juce::Label matrixFoldLabel;
+    juce::Label matrixLpgLabel;
 
     juce::Slider matrix281PitchSlider;
     juce::Slider matrix281FoldSlider;
@@ -55,44 +126,17 @@ private:
     juce::Slider matrix266SteppedFoldSlider;
     juce::Slider matrix266SteppedLpgSlider;
 
-    juce::Label foldLabel;
-    juce::Label attackLabel;
-    juce::Label releaseLabel;
-    juce::Label lpgLabel;
+    //==========================================================================
+    void setupKnob (juce::Slider& slider,
+                    double min,
+                    double max,
+                    double interval);
 
-    juce::Label funcBRateLabel;
-    juce::Label funcBDepthLabel;
+    void setupMatrixSlider (juce::Slider& slider);
 
-    juce::Label uncertaintyRateLabel;
-    juce::Label uncertaintySmoothLabel;
-    juce::Label uncertaintySteppedLabel;
-
-    juce::Label synthLevelLabel;
-    juce::Label inputLevelLabel;
-    juce::Label noiseLevelLabel;
-
-    juce::Label test266SmoothToFoldLabel;
-    juce::Label test266SteppedToPitchLabel;
-    juce::Label test266BiasToLpgLabel;
-    juce::Label test266PulseToTriggerLabel;
-
-    juce::Label detuneAmountLabel;
-    juce::Label stereoSpreadLabel;
-
-    juce::Label complexModRatioLabel;
-    juce::Label complexFmAmountLabel;
-    juce::Label complexOscMixLabel;
-
-    juce::Label matrixTitleLabel;
-    juce::Label matrixPitchLabel;
-    juce::Label matrixFoldLabel;
-    juce::Label matrixLpgLabel;
-    juce::Label matrix281Label;
-    juce::Label matrix266SmoothLabel;
-    juce::Label matrix266SteppedLabel;
-
-    juce::ToggleButton funcBCycleButton;
-    juce::ToggleButton gateInputButton;
+    void setupLabel (juce::Label& label,
+                     const juce::String& text,
+                     juce::Justification justification = juce::Justification::centred);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WestPatchAudioProcessorEditor)
 };

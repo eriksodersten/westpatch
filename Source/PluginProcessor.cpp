@@ -5,18 +5,20 @@
 
 //==============================================================================
 WestPatchAudioProcessor::WestPatchAudioProcessor()
-    : AudioProcessor (BusesProperties()
+     : AudioProcessor (BusesProperties()
 #if ! JucePlugin_IsMidiEffect
  #if ! JucePlugin_IsSynth
-        .withInput ("Input", juce::AudioChannelSet::stereo(), true)
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
  #endif
-        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
 #endif
-    )
+                       )
 {
     for (int s = 0; s < numModSources; ++s)
         for (int d = 0; d < numModDestinations; ++d)
             modulationMatrix[s][d] = 0.0f;
+
+    resetGroups();
 }
 
 WestPatchAudioProcessor::~WestPatchAudioProcessor() = default;
@@ -59,6 +61,7 @@ double WestPatchAudioProcessor::getTailLengthSeconds() const
     return 0.0;
 }
 
+//==============================================================================
 int WestPatchAudioProcessor::getNumPrograms()
 {
     return 1;
@@ -83,113 +86,77 @@ void WestPatchAudioProcessor::changeProgramName (int, const juce::String&)
 }
 
 //==============================================================================
-void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int /*samplesPerBlock*/)
+void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     currentSampleRate = sampleRate;
 
-    for (int i = 0; i < numLanes; ++i)
-    {
-        lanes[i].prepare (sampleRate);
-        lanes[i].frequency = frequency;
-    }
-
-    for (int g = 0; g < maxGroups; ++g)
-    {
-        groups[g].gate = false;
-        groups[g].midiNote = -1;
-        groups[g].frequency = frequency;
-    }
+    for (auto& lane : lanes)
+        lane.prepare (sampleRate);
 
     noiseSource.prepare (sampleRate);
+
     functionGenerator281.prepare (sampleRate);
+    functionGenerator281.reset();
     functionGenerator281.setCycle (funcBCycle);
+
     uncertainty266.prepare (sampleRate);
+    uncertainty266.reset();
 
-    smoothedFoldAmount = foldAmount;
-    smoothedAttackTime = attackTime;
-    smoothedReleaseTime = releaseTime;
-    smoothedLpgAmount = lpgAmount;
-    smoothedModDepth = modDepth;
-    smoothedFuncBRate = funcBRate;
-    smoothedFuncBDepth = funcBDepth;
-    smoothedUncertaintyRate = uncertaintyRate;
-    smoothedUncertaintySmoothDepth = uncertaintySmoothDepth;
-    smoothedUncertaintySteppedDepth = uncertaintySteppedDepth;
-    smoothedSynthLevel = synthLevel;
-    smoothedInputLevel = inputLevel;
-    smoothedNoiseLevel = noiseLevel;
+    groupEnvelopeManager.prepare (sampleRate);
+    groupEnvelopeManager.setNumGroups (getNumGroups());
+    groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
 
-    smoothedTest266SmoothToFold = test266SmoothToFold;
-    smoothedTest266SteppedToPitch = test266SteppedToPitch;
-    smoothedTest266BiasToLpg = test266BiasToLpg;
-    smoothedTest266PulseToTrigger = test266PulseToTrigger;
-
-    smoothedDetuneAmount = detuneAmount;
-    smoothedStereoSpread = stereoSpread;
-
-    smoothedComplexModRatio = complexModRatio;
-    smoothedComplexFmAmount = complexFmAmount;
-    smoothedComplexOscMix = complexOscMix;
-
-    modEnvelope = 0.0f;
-    funcBPhase = 0.0f;
-    uncertaintyPhase = 0.0f;
-    smoothRandomValue = 0.0f;
-    smoothRandomTarget = 0.0f;
-    steppedRandomValue = 0.0f;
     previous266PulseHigh = false;
+    resetGroups();
 }
 
 void WestPatchAudioProcessor::releaseResources()
 {
 }
 
-//==============================================================================
+#if ! JucePlugin_IsMidiEffect
 bool WestPatchAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-#if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-#else
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    const auto& mainOut = layouts.getMainOutputChannelSet();
+
+    if (mainOut != juce::AudioChannelSet::mono()
+        && mainOut != juce::AudioChannelSet::stereo())
         return false;
 
    #if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+    if (layouts.getMainInputChannelSet() != mainOut)
         return false;
    #endif
 
     return true;
+}
 #endif
+
+//==============================================================================
+void WestPatchAudioProcessor::setGroupMode (GroupMode newMode) noexcept
+{
+    if (groupMode == newMode)
+        return;
+
+    groupMode = newMode;
+    groupEnvelopeManager.setNumGroups (getNumGroups());
+    resetGroups();
 }
 
-bool WestPatchAudioProcessor::hasActiveRoutingForDestination (ModDestination destination) const
+int WestPatchAudioProcessor::getActiveGroupCount() const noexcept
 {
-    const int d = static_cast<int> (destination);
-
-    for (int s = 0; s < numModSources; ++s)
-        if (modulationMatrix[s][d] != 0.0f)
-            return true;
-
-    return false;
+    return getNumGroups();
 }
 
 int WestPatchAudioProcessor::laneToGroup (int laneIndex) const noexcept
 {
     switch (groupMode)
     {
-        case GroupMode::Mono:
-            return 0;
-
-        case GroupMode::Duo:
-            return (laneIndex < 2) ? 0 : 1;
-
-        case GroupMode::Quad:
-            return juce::jlimit (0, maxGroups - 1, laneIndex);
+        case GroupMode::Mono: return 0;
+        case GroupMode::Duo:  return laneIndex < 2 ? 0 : 1;
+        case GroupMode::Quad: return juce::jlimit (0, maxGroups - 1, laneIndex);
+        default:              return 0;
     }
-
-    return 0;
 }
 
 int WestPatchAudioProcessor::getNumGroups() const noexcept
@@ -199,280 +166,93 @@ int WestPatchAudioProcessor::getNumGroups() const noexcept
         case GroupMode::Mono: return 1;
         case GroupMode::Duo:  return 2;
         case GroupMode::Quad: return 4;
+        default:              return 1;
     }
-
-    return 1;
 }
 
 int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
 {
     const int numGroups = getNumGroups();
 
-    // First free group
     for (int g = 0; g < numGroups; ++g)
+    {
         if (! groups[g].gate)
             return g;
+    }
 
-    // Fallback: steal the last active group
-    return juce::jmax (0, numGroups - 1);
+    // Simple voice stealing for now
+    return 0;
+}
+
+void WestPatchAudioProcessor::resetGroups() noexcept
+{
+    for (auto& group : groups)
+    {
+        group.gate = false;
+        group.midiNote = -1;
+        group.frequencyHz = 440.0f;
+    }
+
+    groupEnvelopeManager.reset();
 }
 
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 {
-    const int groupIndex = findGroupForNoteOn();
+    const int groupIndex = juce::jlimit (0, getNumGroups() - 1, findGroupForNoteOn());
+    auto& group = groups[groupIndex];
 
-    groups[groupIndex].gate = true;
-    groups[groupIndex].midiNote = midiNoteNumber;
-    groups[groupIndex].frequency =
-        juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
+    const bool wasInactive = ! group.gate;
 
-    currentMidiNote = midiNoteNumber;
-    frequency = groups[groupIndex].frequency;
-    isNoteOn = true;
+    group.gate = true;
+    group.midiNote = midiNoteNumber;
+    group.frequencyHz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
+
+    if (wasInactive)
+        groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
 {
-    const int numGroups = getNumGroups();
-
-    for (int g = 0; g < numGroups; ++g)
+    for (int g = 0; g < getNumGroups(); ++g)
     {
-        if (groups[g].midiNote == midiNoteNumber)
+        auto& group = groups[g];
+
+        if (group.gate && group.midiNote == midiNoteNumber)
         {
-            groups[g].gate = false;
-            groups[g].midiNote = -1;
+            group.gate = false;
+            group.midiNote = -1;
+            groupEnvelopeManager.noteOff (g);
         }
     }
+}
 
-    bool anyGate = false;
-    for (int g = 0; g < numGroups; ++g)
+//==============================================================================
+bool WestPatchAudioProcessor::hasActiveRoutingForDestination (ModDestination destination) const
+{
+    const int d = static_cast<int> (destination);
+
+    for (int s = 0; s < numModSources; ++s)
     {
-        if (groups[g].gate)
-        {
-            anyGate = true;
-            currentMidiNote = groups[g].midiNote;
-            frequency = groups[g].frequency;
-            break;
-        }
+        if (std::abs (modulationMatrix[s][d]) > 0.00001f)
+            return true;
     }
 
-    isNoteOn = anyGate;
+    return false;
 }
 
 float WestPatchAudioProcessor::mapSteppedRandomToQuantizedSemitoneOffset (float steppedValue,
                                                                           float depthNormalized) noexcept
 {
-    static constexpr int scaleOffsets[] =
-    {
-        -12, -10, -9, -7, -5, -3, -2,
-          0,
-          2,   3,  5,  7,  9, 10, 12
-    };
-
-    static constexpr int numOffsets = (int) (sizeof (scaleOffsets) / sizeof (scaleOffsets[0]));
-
     const float clampedDepth = juce::jlimit (0.0f, 1.0f, depthNormalized);
-    if (clampedDepth <= 0.0001f)
+    const int maxSemitone = static_cast<int> (std::round (clampedDepth * 24.0f));
+
+    if (maxSemitone <= 0)
         return 0.0f;
 
-    const float clampedStepped = juce::jlimit (-1.0f, 1.0f, steppedValue);
-    const float normalized = 0.5f * (clampedStepped + 1.0f);
+    const float normalized = juce::jlimit (-1.0f, 1.0f, steppedValue);
+    const int quantized = static_cast<int> (std::round (normalized * static_cast<float> (maxSemitone)));
 
-    const int centerIndex = numOffsets / 2;
-    const int maxSpread = centerIndex;
-
-    const int allowedSpread = juce::jlimit (0,
-                                            maxSpread,
-                                            (int) std::round (clampedDepth * (float) maxSpread));
-
-    if (allowedSpread == 0)
-        return 0.0f;
-
-    const int minIndex = centerIndex - allowedSpread;
-    const int maxIndex = centerIndex + allowedSpread;
-
-    const float mappedIndex = juce::jmap (normalized, (float) minIndex, (float) maxIndex);
-    const int index = juce::jlimit (minIndex, maxIndex, (int) std::round (mappedIndex));
-
-    return (float) scaleOffsets[index];
-}
-
-//==============================================================================
-void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept
-{
-    constexpr float smoothingCoeff = 0.001f;
-    constexpr float foldTestGain = 5.0f;
-
-    SignalBus bus;
-
-    smoothedFoldAmount += smoothingCoeff * (foldAmount - smoothedFoldAmount);
-    smoothedAttackTime += smoothingCoeff * (attackTime - smoothedAttackTime);
-    smoothedReleaseTime += smoothingCoeff * (releaseTime - smoothedReleaseTime);
-    smoothedLpgAmount += smoothingCoeff * (lpgAmount - smoothedLpgAmount);
-    smoothedModDepth += smoothingCoeff * (modDepth - smoothedModDepth);
-    smoothedFuncBRate += smoothingCoeff * (funcBRate - smoothedFuncBRate);
-    smoothedFuncBDepth += smoothingCoeff * (funcBDepth - smoothedFuncBDepth);
-    smoothedUncertaintyRate += smoothingCoeff * (uncertaintyRate - smoothedUncertaintyRate);
-    smoothedUncertaintySmoothDepth += smoothingCoeff * (uncertaintySmoothDepth - smoothedUncertaintySmoothDepth);
-    smoothedUncertaintySteppedDepth += smoothingCoeff * (uncertaintySteppedDepth - smoothedUncertaintySteppedDepth);
-    smoothedSynthLevel += smoothingCoeff * (synthLevel - smoothedSynthLevel);
-    smoothedInputLevel += smoothingCoeff * (inputLevel - smoothedInputLevel);
-    smoothedNoiseLevel += smoothingCoeff * (noiseLevel - smoothedNoiseLevel);
-
-    smoothedTest266SmoothToFold += smoothingCoeff * (test266SmoothToFold - smoothedTest266SmoothToFold);
-    smoothedTest266SteppedToPitch += smoothingCoeff * (test266SteppedToPitch - smoothedTest266SteppedToPitch);
-    smoothedTest266BiasToLpg += smoothingCoeff * (test266BiasToLpg - smoothedTest266BiasToLpg);
-    smoothedTest266PulseToTrigger += smoothingCoeff * (test266PulseToTrigger - smoothedTest266PulseToTrigger);
-    smoothedDetuneAmount += smoothingCoeff * (detuneAmount - smoothedDetuneAmount);
-    smoothedStereoSpread += smoothingCoeff * (stereoSpread - smoothedStereoSpread);
-    smoothedComplexModRatio += smoothingCoeff * (complexModRatio - smoothedComplexModRatio);
-    smoothedComplexFmAmount += smoothingCoeff * (complexFmAmount - smoothedComplexFmAmount);
-    smoothedComplexOscMix += smoothingCoeff * (complexOscMix - smoothedComplexOscMix);
-
-    bus.env = functionGenerator281.process (smoothedAttackTime, smoothedReleaseTime);
-
-    const float modEnvCoeff = isNoteOn
-        ? (1.0f / juce::jmax (1.0f, modAttackTime * static_cast<float> (currentSampleRate)))
-        : (1.0f / juce::jmax (1.0f, modReleaseTime * static_cast<float> (currentSampleRate)));
-
-    if (isNoteOn)
-        modEnvelope += (1.0f - modEnvelope) * modEnvCoeff;
-    else
-        modEnvelope += (0.0f - modEnvelope) * modEnvCoeff;
-
-    bus.modEnv = modEnvelope;
-
-    funcBPhase += smoothedFuncBRate / static_cast<float> (currentSampleRate);
-    if (funcBPhase >= 1.0f)
-        funcBPhase -= 1.0f;
-
-    const float functionBValue =
-        std::sin (2.0f * juce::MathConstants<float>::pi * funcBPhase) * smoothedFuncBDepth;
-
-    Uncertainty266::Params uncertaintyParams;
-    uncertaintyParams.rate = smoothedUncertaintyRate;
-    uncertaintyParams.smoothAmount = smoothedUncertaintySmoothDepth;
-    uncertaintyParams.steppedAmount = smoothedUncertaintySteppedDepth;
-    uncertaintyParams.density = 0.75f;
-    uncertaintyParams.correlation = 0.45f;
-    uncertaintyParams.spread = 1.0f;
-
-    const auto uncertaintyOut = uncertainty266.process (uncertaintyParams);
-
-    const float uncertaintySmoothValue  = uncertaintyOut.smooth;
-    const float uncertaintySteppedValue = uncertaintyOut.stepped;
-    const float uncertaintyBiasValue    = uncertaintyOut.bias;
-    const float uncertaintyPulseValue   = uncertaintyOut.pulse;
-
-    bus.pitchMod = 0.0f;
-    bus.foldMod = 0.0f;
-    bus.lpgCV = 0.0f;
-
-    bus.pitchMod += functionBValue
-        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Pitch];
-    bus.foldMod += functionBValue
-        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::Fold];
-    bus.lpgCV += functionBValue
-        * modulationMatrix[(int) ModSource::FunctionB][(int) ModDestination::LPG];
-
-    bus.pitchMod += uncertaintySmoothValue
-        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Pitch];
-    bus.foldMod += uncertaintySmoothValue
-        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::Fold];
-    bus.lpgCV += uncertaintySmoothValue
-        * modulationMatrix[(int) ModSource::UncertaintySmooth][(int) ModDestination::LPG];
-
-    bus.pitchMod += uncertaintySteppedValue
-        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Pitch];
-    bus.foldMod += uncertaintySteppedValue
-        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::Fold];
-    bus.lpgCV += uncertaintySteppedValue
-        * modulationMatrix[(int) ModSource::UncertaintyStepped][(int) ModDestination::LPG];
-
-    const float testFoldMod =
-        (smoothedTest266SmoothToFold <= 0.0001f)
-            ? 0.0f
-            : uncertaintySmoothValue * smoothedTest266SmoothToFold * foldTestGain;
-
-    const float testLpgMod =
-        (smoothedTest266BiasToLpg <= 0.0001f)
-            ? 0.0f
-            : uncertaintyBiasValue * smoothedTest266BiasToLpg;
-
-    const float quantizedSemitoneOffset =
-        mapSteppedRandomToQuantizedSemitoneOffset (uncertaintySteppedValue,
-                                                   smoothedTest266SteppedToPitch);
-
-    const float pitchRatio =
-        (std::abs (quantizedSemitoneOffset) <= 0.0001f)
-            ? 1.0f
-            : std::pow (2.0f, quantizedSemitoneOffset / 12.0f);
-
-    const bool pulseHigh = uncertaintyPulseValue > 0.5f;
-    if (smoothedTest266PulseToTrigger > 0.01f && pulseHigh && ! previous266PulseHigh)
-        functionGenerator281.trigger();
-
-    previous266PulseHigh = pulseHigh;
-
-    bus.noise = noiseSource.process();
-    bus.extIn = inputSample;
-
-    bus.synthIn = smoothedSynthLevel * 1.15f;
-    bus.noiseIn = bus.noise * smoothedNoiseLevel;
-    bus.extScaled = bus.extIn * smoothedInputLevel;
-
-    const float foldValue = smoothedFoldAmount + bus.foldMod + testFoldMod;
-    const float lpgEnvelope = bus.env * (1.5f - 0.5f * bus.env);
-    const float ampEnvelope = bus.env;
-
-    float laneMixL = 0.0f;
-    float laneMixR = 0.0f;
-
-    for (int i = 0; i < numLanes; ++i)
-    {
-        auto& lane = lanes[i];
-        const int groupIndex = laneToGroup (i);
-        const float groupFrequency = groups[groupIndex].frequency;
-
-        const float detuneCents = laneDetuneBase[i] * smoothedDetuneAmount;
-        const float detuneRatio = std::pow (2.0f, detuneCents / 1200.0f);
-
-        const float modulatedFrequencyHz =
-            juce::jmax (20.0f, (groupFrequency + bus.pitchMod) * pitchRatio);
-
-        const float laneOut = lane.renderComplex (
-            modulatedFrequencyHz * detuneRatio,
-            smoothedComplexModRatio,
-            smoothedComplexFmAmount,
-            smoothedComplexOscMix,
-            bus.synthIn,
-            foldValue,
-            lpgEnvelope,
-            smoothedLpgAmount,
-            bus.lpgCV + testLpgMod,
-            bus.noiseIn
-        );
-
-        const float pan = juce::jlimit (-1.0f, 1.0f, lanePanBase[i] * smoothedStereoSpread);
-        const float gainL = 0.5f * (1.0f - pan);
-        const float gainR = 0.5f * (1.0f + pan);
-
-        laneMixL += laneOut * gainL;
-        laneMixR += laneOut * gainR;
-    }
-
-    laneMixL *= (1.0f / (float) numLanes);
-    laneMixR *= (1.0f / (float) numLanes);
-
-    const float extFolded = lanes[0].wavefolder.process (bus.extScaled, foldValue);
-
-    if (gateExternalInput)
-        bus.extOut = extFolded * ampEnvelope;
-    else
-        bus.extOut = extFolded;
-
-    outL = (laneMixL + bus.extOut) * outputLevel;
-    outR = (laneMixR + bus.extOut) * outputLevel;
+    return static_cast<float> (quantized);
 }
 
 //==============================================================================
@@ -481,47 +261,187 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ScopedNoDenormals noDenormals;
 
-    const int totalNumInputChannels = getTotalNumInputChannels();
-    const int totalNumOutputChannels = getTotalNumOutputChannels();
-    const int numSamples = buffer.getNumSamples();
+    const auto totalNumInputChannels = getTotalNumInputChannels();
+    const auto totalNumOutputChannels = getTotalNumOutputChannels();
 
     for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, numSamples);
+        buffer.clear (i, 0, buffer.getNumSamples());
 
+    groupEnvelopeManager.setNumGroups (getNumGroups());
+    groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
     functionGenerator281.setCycle (funcBCycle);
 
     for (const auto metadata : midiMessages)
     {
-        const auto message = metadata.getMessage();
+        const auto msg = metadata.getMessage();
 
-        if (message.isNoteOn())
+        if (msg.isNoteOn())
         {
-            noteOnToGroup (message.getNoteNumber());
-            functionGenerator281.trigger();
+            noteOnToGroup (msg.getNoteNumber());
+            functionGenerator281.trigger(); // remains global
         }
-        else if (message.isNoteOff())
+        else if (msg.isNoteOff())
         {
-            noteOffFromGroups (message.getNoteNumber());
+            noteOffFromGroups (msg.getNoteNumber());
+        }
+        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+        {
+            resetGroups();
         }
     }
 
-    auto* leftOut  = buffer.getWritePointer (0);
-    auto* rightOut = totalNumOutputChannels > 1 ? buffer.getWritePointer (1) : nullptr;
-    const float* inputLeft = totalNumInputChannels > 0 ? buffer.getReadPointer (0) : nullptr;
+    midiMessages.clear();
 
-    for (int sample = 0; sample < numSamples; ++sample)
+    auto* left  = buffer.getWritePointer (0);
+    auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer (1) : nullptr;
+
+    auto* inL = totalNumInputChannels > 0 ? buffer.getReadPointer (0) : nullptr;
+    auto* inR = totalNumInputChannels > 1 ? buffer.getReadPointer (1) : nullptr;
+
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
-        const float inputSample = inputLeft != nullptr ? inputLeft[sample] : 0.0f;
+        float inputSample = 0.0f;
+
+        if (inL != nullptr && inR != nullptr)
+            inputSample = 0.5f * (inL[sample] + inR[sample]);
+        else if (inL != nullptr)
+            inputSample = inL[sample];
 
         float outL = 0.0f;
         float outR = 0.0f;
+
         renderSample (inputSample, outL, outR);
 
-        leftOut[sample] = outL;
-
-        if (rightOut != nullptr)
-            rightOut[sample] = outR;
+        left[sample] = outL;
+        if (right != nullptr)
+            right[sample] = outR;
     }
+}
+
+void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept
+{
+    SignalBus bus;
+
+    // 281 stays global
+    const float global281Env = functionGenerator281.process (modAttackTime, modReleaseTime);
+    bus.modEnv = global281Env;
+
+    // 266 stays global
+    Uncertainty266::Params uncertaintyParams;
+    uncertaintyParams.rate = uncertaintyRate;
+    uncertaintyParams.smoothAmount = uncertaintySmoothDepth;
+    uncertaintyParams.steppedAmount = uncertaintySteppedDepth;
+    uncertaintyParams.density = 0.5f;
+    uncertaintyParams.correlation = 0.5f;
+    uncertaintyParams.spread = 1.0f;
+
+    const auto uncertaintyOut = uncertainty266.process (uncertaintyParams);
+
+    const bool pulseHigh = uncertaintyOut.pulse > 0.5f;
+    if (pulseHigh && ! previous266PulseHigh && test266PulseToTrigger > 0.001f)
+        functionGenerator281.trigger();
+    previous266PulseHigh = pulseHigh;
+
+    const float modSources[numModSources] =
+    {
+        bus.modEnv,
+        uncertaintyOut.smooth,
+        uncertaintyOut.stepped
+    };
+
+    float pitchModSemitones = 0.0f;
+    float foldModAmount = 0.0f;
+    float lpgCvMod = 0.0f;
+
+    for (int s = 0; s < numModSources; ++s)
+    {
+        pitchModSemitones += modSources[s] * modulationMatrix[s][static_cast<int> (ModDestination::Pitch)];
+        foldModAmount     += modSources[s] * modulationMatrix[s][static_cast<int> (ModDestination::Fold)];
+        lpgCvMod          += modSources[s] * modulationMatrix[s][static_cast<int> (ModDestination::LPG)];
+    }
+
+    foldModAmount += uncertaintyOut.smooth * test266SmoothToFold;
+    pitchModSemitones += mapSteppedRandomToQuantizedSemitoneOffset (uncertaintyOut.stepped,
+                                                                    test266SteppedToPitch);
+    lpgCvMod += uncertaintyOut.bias * test266BiasToLpg;
+
+    float sumL = 0.0f;
+    float sumR = 0.0f;
+    
+    float groupEnvValues[maxGroups] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    for (int g = 0; g < getNumGroups(); ++g)
+    {
+        groupEnvValues[g] =
+            juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
+    }
+
+    for (int laneIndex = 0; laneIndex < numLanes; ++laneIndex)
+    {
+        const int groupIndex = laneToGroup (laneIndex);
+        const auto& group = groups[groupIndex];
+
+        const float groupEnv = groupEnvValues[groupIndex];
+
+        const float baseFreq = group.frequencyHz > 0.0f ? group.frequencyHz : 440.0f;
+
+        const float detuneSemitones = laneDetuneBase[laneIndex] * detuneAmount;
+        const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
+        const float laneFreqHz = baseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
+
+        const float foldValue = juce::jmax (0.0f, foldAmount + foldModAmount);
+        const float noiseIn = noiseSource.process() * noiseLevel;
+
+        float laneLpgEnv = 1.0f;
+
+        switch (toneMode)
+        {
+            case ToneMode::West:
+                laneLpgEnv = 1.0f;
+                break;
+            case ToneMode::Moog:
+                laneLpgEnv = 0.9f;
+                break;
+            case ToneMode::Roland:
+                laneLpgEnv = 0.8f;
+                break;
+            default:
+                laneLpgEnv = 1.0f;
+                break;
+        }
+
+        float laneOut = lanes[laneIndex].renderComplex (
+            laneFreqHz,
+            complexModRatio,
+            complexFmAmount,
+            complexOscMix,
+            synthLevel,
+            foldValue,
+            laneLpgEnv,
+            lpgAmount,
+            lpgCvMod,
+            noiseIn
+        );
+
+        // First group-aware route: ADSR -> amp
+        laneOut *= groupEnv;
+
+        float ext = inputSample * inputLevel;
+        if (gateExternalInput)
+            ext *= groupEnv;
+
+        laneOut += ext * 0.25f;
+
+        const float pan = juce::jlimit (-1.0f, 1.0f, lanePanBase[laneIndex] * stereoSpread);
+        const float leftGain  = std::sqrt (0.5f * (1.0f - pan));
+        const float rightGain = std::sqrt (0.5f * (1.0f + pan));
+
+        sumL += laneOut * leftGain;
+        sumR += laneOut * rightGain;
+    }
+
+    outL = sumL * outputLevel;
+    outR = sumR * outputLevel;
 }
 
 //==============================================================================
@@ -538,25 +458,28 @@ juce::AudioProcessorEditor* WestPatchAudioProcessor::createEditor()
 //==============================================================================
 void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    juce::MemoryOutputStream stream (destData, false);
+    juce::MemoryOutputStream stream (destData, true);
 
     stream.writeFloat (attackTime);
     stream.writeFloat (releaseTime);
     stream.writeFloat (foldAmount);
     stream.writeFloat (lpgAmount);
+
     stream.writeFloat (modAttackTime);
     stream.writeFloat (modReleaseTime);
     stream.writeFloat (modDepth);
     stream.writeFloat (funcBRate);
     stream.writeFloat (funcBDepth);
-    stream.writeBool  (funcBCycle);
+    stream.writeBool (funcBCycle);
+
     stream.writeFloat (uncertaintyRate);
     stream.writeFloat (uncertaintySmoothDepth);
     stream.writeFloat (uncertaintySteppedDepth);
+
     stream.writeFloat (synthLevel);
     stream.writeFloat (inputLevel);
     stream.writeFloat (noiseLevel);
-    stream.writeBool  (gateExternalInput);
+    stream.writeBool (gateExternalInput);
 
     stream.writeFloat (test266SmoothToFold);
     stream.writeFloat (test266SteppedToPitch);
@@ -565,12 +488,12 @@ void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 
     stream.writeFloat (detuneAmount);
     stream.writeFloat (stereoSpread);
-
     stream.writeFloat (complexModRatio);
     stream.writeFloat (complexFmAmount);
     stream.writeFloat (complexOscMix);
 
-    stream.writeInt ((int) groupMode);
+    stream.writeInt (static_cast<int> (groupMode));
+    stream.writeInt (static_cast<int> (toneMode));
 
     for (int s = 0; s < numModSources; ++s)
         for (int d = 0; d < numModDestinations; ++d)
@@ -581,56 +504,67 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
 {
     juce::MemoryInputStream stream (data, static_cast<size_t> (sizeInBytes), false);
 
-    auto readFloatOr = [&stream] (float fallbackValue) -> float
+    attackTime = stream.readFloat();
+    releaseTime = stream.readFloat();
+    foldAmount = stream.readFloat();
+    lpgAmount = stream.readFloat();
+
+    modAttackTime = stream.readFloat();
+    modReleaseTime = stream.readFloat();
+    modDepth = stream.readFloat();
+    funcBRate = stream.readFloat();
+    funcBDepth = stream.readFloat();
+    funcBCycle = stream.readBool();
+
+    uncertaintyRate = stream.readFloat();
+    uncertaintySmoothDepth = stream.readFloat();
+    uncertaintySteppedDepth = stream.readFloat();
+
+    synthLevel = stream.readFloat();
+    inputLevel = stream.readFloat();
+    noiseLevel = stream.readFloat();
+    gateExternalInput = stream.readBool();
+
+    test266SmoothToFold = stream.readFloat();
+    test266SteppedToPitch = stream.readFloat();
+    test266BiasToLpg = stream.readFloat();
+    test266PulseToTrigger = stream.readFloat();
+
+    detuneAmount = stream.readFloat();
+    stereoSpread = stream.readFloat();
+    complexModRatio = stream.readFloat();
+    complexFmAmount = stream.readFloat();
+    complexOscMix = stream.readFloat();
+
+    const int storedGroupMode = stream.readInt();
+    switch (storedGroupMode)
     {
-        return stream.getNumBytesRemaining() >= (int) sizeof (float) ? stream.readFloat() : fallbackValue;
-    };
+        case 0: groupMode = GroupMode::Mono; break;
+        case 1: groupMode = GroupMode::Duo;  break;
+        case 2: groupMode = GroupMode::Quad; break;
+        default: groupMode = GroupMode::Mono; break;
+    }
 
-    auto readBoolOr = [&stream] (bool fallbackValue) -> bool
+    const int storedToneMode = stream.readInt();
+    switch (storedToneMode)
     {
-        return stream.getNumBytesRemaining() >= (int) sizeof (bool) ? stream.readBool() : fallbackValue;
-    };
-
-    auto readIntOr = [&stream] (int fallbackValue) -> int
-    {
-        return stream.getNumBytesRemaining() >= (int) sizeof (int) ? stream.readInt() : fallbackValue;
-    };
-
-    attackTime = readFloatOr (attackTime);
-    releaseTime = readFloatOr (releaseTime);
-    foldAmount = readFloatOr (foldAmount);
-    lpgAmount = readFloatOr (lpgAmount);
-    modAttackTime = readFloatOr (modAttackTime);
-    modReleaseTime = readFloatOr (modReleaseTime);
-    modDepth = readFloatOr (modDepth);
-    funcBRate = readFloatOr (funcBRate);
-    funcBDepth = readFloatOr (funcBDepth);
-    funcBCycle = readBoolOr (funcBCycle);
-    uncertaintyRate = readFloatOr (uncertaintyRate);
-    uncertaintySmoothDepth = readFloatOr (uncertaintySmoothDepth);
-    uncertaintySteppedDepth = readFloatOr (uncertaintySteppedDepth);
-    synthLevel = readFloatOr (synthLevel);
-    inputLevel = readFloatOr (inputLevel);
-    noiseLevel = readFloatOr (noiseLevel);
-    gateExternalInput = readBoolOr (gateExternalInput);
-
-    test266SmoothToFold = readFloatOr (test266SmoothToFold);
-    test266SteppedToPitch = readFloatOr (test266SteppedToPitch);
-    test266BiasToLpg = readFloatOr (test266BiasToLpg);
-    test266PulseToTrigger = readFloatOr (test266PulseToTrigger);
-
-    detuneAmount = readFloatOr (detuneAmount);
-    stereoSpread = readFloatOr (stereoSpread);
-
-    complexModRatio = readFloatOr (complexModRatio);
-    complexFmAmount = readFloatOr (complexFmAmount);
-    complexOscMix = readFloatOr (complexOscMix);
-
-    groupMode = (GroupMode) juce::jlimit (0, 2, readIntOr ((int) groupMode));
+        case 0: toneMode = ToneMode::West;   break;
+        case 1: toneMode = ToneMode::Moog;   break;
+        case 2: toneMode = ToneMode::Roland; break;
+        default: toneMode = ToneMode::West;  break;
+    }
 
     for (int s = 0; s < numModSources; ++s)
+    {
         for (int d = 0; d < numModDestinations; ++d)
-            modulationMatrix[s][d] = readFloatOr (modulationMatrix[s][d]);
+        {
+            if (! stream.isExhausted())
+                modulationMatrix[s][d] = stream.readFloat();
+        }
+    }
+
+    groupEnvelopeManager.setNumGroups (getNumGroups());
+    groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
 }
 
 //==============================================================================

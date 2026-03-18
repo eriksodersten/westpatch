@@ -1,0 +1,77 @@
+Change Dir: '/Users/eriksode/Projects/WestPatch/build'
+
+Run Build Command(s): /usr/bin/xcodebuild -project WestPatch.xcodeproj build -configuration Debug -parallelizeTargets -hideShellScriptEnvironment -target ALL_BUILD
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project WestPatch.xcodeproj build -configuration Debug -parallelizeTargets -hideShellScriptEnvironment -target ALL_BUILD
+
+ComputePackagePrebuildTargetDependencyGraph
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (4 targets)
+    Target 'ALL_BUILD' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch_AU' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'WestPatch_AU' in project 'WestPatch'
+        ➜ Explicit dependency on target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'WestPatch' in project 'WestPatch'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'WestPatch'
+    Target 'ZERO_CHECK' in project 'WestPatch' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
+    cd /Users/eriksode/Projects/WestPatch/build/WestPatch.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -o /var/folders/w2/nsngthc96rz0lwnkjnplxs440000gp/C/com.apple.DeveloperTools/26.3-17C529/Xcode/SDKStatCaches.noindex/macosx26.2-25C58-00fa09913b459cbbc988d1f6730289ae.sdkstatcache
+
+PhaseScriptExecution Generate\ CMakeFiles/ZERO_CHECK /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/ZERO_CHECK.build/Script-1102B11BABBFA2DCCFACEDA8.sh (in target 'ZERO_CHECK' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    /bin/sh -c /Users/eriksode/Projects/WestPatch/build/build/WestPatch.build/Debug/ZERO_CHECK.build/Script-1102B11BABBFA2DCCFACEDA8.sh
+/usr/local/bin/cmake -P /Users/eriksode/Projects/WestPatch/build/CMakeFiles/VerifyGlobs.cmake
+
+note: Run script build phase 'CMake PostBuild Rules' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'WestPatch_AU' from project 'WestPatch')
+Ld /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/AU/WestPatch.component/Contents/MacOS/WestPatch normal (in target 'WestPatch_AU' from project 'WestPatch')
+    cd /Users/eriksode/Projects/WestPatch
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -Xlinker -reproducible -target arm64-apple-macos26.2 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -O0 -L/Users/eriksode/Projects/WestPatch/build/build/EagerLinkingTBDs/Debug -L/Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/AU -F/Users/eriksode/Projects/WestPatch/build/build/EagerLinkingTBDs/Debug -F/Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/AU -filelist /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/Objects-normal/arm64/WestPatch.LinkFileList -Xlinker -object_path_lto -Xlinker /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/Objects-normal/arm64/WestPatch_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/eriksode/Projects/WestPatch/build/build/WestPatch_AU.build/Debug/Objects-normal/arm64/WestPatch_dependency_info.dat -Wl,-headerpad_max_install_names /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/libWestPatch_SharedCode.a -framework WebKit -weak_framework Metal -weak_framework MetalKit -framework DiscRecording -framework QuartzCore -framework CoreAudio -framework CoreMIDI -framework AudioToolbox -framework Accelerate -framework Cocoa -framework Foundation -framework IOKit -framework Security -framework AudioUnit -framework CoreAudioKit -Xlinker -no_adhoc_codesign -o /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/AU/WestPatch.component/Contents/MacOS/WestPatch
+Undefined symbols for architecture arm64:
+  "GroupEnvelopeManager::setNumGroups(int)", referenced from:
+      WestPatchAudioProcessor::prepareToPlay(double, int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+      WestPatchAudioProcessor::setGroupMode(GroupMode) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+      WestPatchAudioProcessor::processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+      WestPatchAudioProcessor::setStateInformation(void const*, int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::getNextSample(int)", referenced from:
+      WestPatchAudioProcessor::renderSample(float, float&, float&) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::setAttackRelease(float, float)", referenced from:
+      WestPatchAudioProcessor::prepareToPlay(double, int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+      WestPatchAudioProcessor::processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+      WestPatchAudioProcessor::setStateInformation(void const*, int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::reset()", referenced from:
+      WestPatchAudioProcessor::resetGroups() in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::noteOn(int)", referenced from:
+      WestPatchAudioProcessor::noteOnToGroup(int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::noteOff(int)", referenced from:
+      WestPatchAudioProcessor::noteOffFromGroups(int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+  "GroupEnvelopeManager::prepare(double)", referenced from:
+      WestPatchAudioProcessor::prepareToPlay(double, int) in libWestPatch_SharedCode.a[22](PluginProcessor.o)
+ld: symbol(s) not found for architecture arm64
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+
+note: Run script build phase 'Generate CMakeFiles/ALL_BUILD' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ALL_BUILD' from project 'WestPatch')
+note: Run script build phase 'Generate CMakeFiles/ZERO_CHECK' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ZERO_CHECK' from project 'WestPatch')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	Ld /Users/eriksode/Projects/WestPatch/build/WestPatch_artefacts/Debug/AU/WestPatch.component/Contents/MacOS/WestPatch normal (in target 'WestPatch_AU' from project 'WestPatch')
+(1 failure)
+

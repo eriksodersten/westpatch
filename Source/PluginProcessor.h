@@ -2,11 +2,13 @@
 
 #include <JuceHeader.h>
 
-#include "dsp/WestPatchLane.h"
+#include "core/WestPatchGroupState.h"
+#include "core/SignalBus.h"
+#include "GroupEnvelopeManager.h"
 #include "dsp/NoiseSource.h"
+#include "dsp/WestPatchLane.h"
 #include "modulation/FunctionGenerator281.h"
 #include "modulation/Uncertainty266.h"
-#include "core/SignalBus.h"
 
 //==============================================================================
 enum class ModSource
@@ -25,6 +27,8 @@ enum class ModDestination
     Count
 };
 
+// GUI visar Unison / Duo / Quad
+// Internt kan Mono stå kvar tills vidare.
 enum class GroupMode
 {
     Mono = 0,
@@ -32,11 +36,12 @@ enum class GroupMode
     Quad
 };
 
-struct WestPatchGroup
+// Tone Mode är fortfarande globalt.
+enum class ToneMode
 {
-    bool gate = false;
-    int midiNote = -1;
-    float frequency = 440.0f;
+    West = 0,
+    Moog,
+    Roland
 };
 
 //==============================================================================
@@ -46,134 +51,146 @@ public:
     WestPatchAudioProcessor();
     ~WestPatchAudioProcessor() override;
 
-    float attackTime = 0.05f;
-    float releaseTime = 0.3f;
-    float foldAmount = 2.5f;
-    float lpgAmount = 0.12f;
-
-    float modAttackTime = 0.02f;
-    float modReleaseTime = 0.25f;
-    float modDepth = 2.5f;
-
-    float funcBRate = 2.0f;
-    float funcBDepth = 20.0f;
-    bool funcBCycle = false;
-
-    float uncertaintyRate = 1.2f;
-    float uncertaintySmoothDepth = 0.8f;
-    float uncertaintySteppedDepth = 8.0f;
-
-    float synthLevel = 1.0f;
-    float inputLevel = 0.0f;
-    float noiseLevel = 0.0f;
-    bool gateExternalInput = true;
-
-    float test266SmoothToFold = 0.15f;
-    float test266SteppedToPitch = 0.20f;
-    float test266BiasToLpg = 0.10f;
-    float test266PulseToTrigger = 0.0f;
-
-    float detuneAmount = 0.35f;
-    float stereoSpread = 0.60f;
-
-    float complexModRatio = 2.0f;
-    float complexFmAmount = 30.0f;
-    float complexOscMix = 0.0f;
-
-    GroupMode groupMode = GroupMode::Mono;
-
+    //==============================================================================
+    // AudioProcessor overrides
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
+
+   #if ! JucePlugin_IsMidiEffect
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+   #endif
+
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
+    //==============================================================================
+    // Editor
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
+    //==============================================================================
+    // Basic plugin info
     const juce::String getName() const override;
+
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
+    //==============================================================================
+    // Programs
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
 
+    //==============================================================================
+    // State
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    static constexpr int numModSources = (int) ModSource::Count;
-    static constexpr int numModDestinations = (int) ModDestination::Count;
+    //==============================================================================
+    // Public params used by current editor
+
+    // Voice envelope (group-level)
+    float attackTime = 0.05f;
+    float releaseTime = 0.30f;
+
+    // Lane sound params
+    float foldAmount = 2.5f;
+    float lpgAmount = 0.12f;
+
+    // Global modulation / 281
+    float modAttackTime = 0.02f;
+    float modReleaseTime = 0.25f;
+    float modDepth = 2.5f;
+    float funcBRate = 2.0f;
+    float funcBDepth = 20.0f;
+    bool funcBCycle = false;
+
+    // Global 266
+    float uncertaintyRate = 1.2f;
+    float uncertaintySmoothDepth = 0.8f;
+    float uncertaintySteppedDepth = 8.0f;
+
+    // Mixer
+    float synthLevel = 1.0f;
+    float inputLevel = 0.0f;
+    float noiseLevel = 0.0f;
+    bool gateExternalInput = true;
+
+    // Test / direct routing params kept global for now
+    float test266SmoothToFold = 0.15f;
+    float test266SteppedToPitch = 0.20f;
+    float test266BiasToLpg = 0.10f;
+    float test266PulseToTrigger = 0.0f;
+
+    // Lane spread / complex oscillator
+    float detuneAmount = 0.35f;
+    float stereoSpread = 0.60f;
+    float complexModRatio = 2.0f;
+    float complexFmAmount = 30.0f;
+    float complexOscMix = 0.0f;
+
+    // Global modes
+    GroupMode groupMode = GroupMode::Mono;
+    ToneMode toneMode = ToneMode::West;
+
+    void setGroupMode (GroupMode newMode) noexcept;
+    int getActiveGroupCount() const noexcept;
+
+    //==============================================================================
+    // Mod matrix (still global)
+    static constexpr int numModSources =
+        static_cast<int> (ModSource::Count);
+
+    static constexpr int numModDestinations =
+        static_cast<int> (ModDestination::Count);
 
     float modulationMatrix[numModSources][numModDestinations] = {};
 
 private:
+    //==============================================================================
     static constexpr int numLanes = 4;
     static constexpr int maxGroups = 4;
 
+    //==============================================================================
+    // Always 4 lanes
     WestPatchLane lanes[numLanes];
-    WestPatchGroup groups[maxGroups];
 
-    float laneDetuneBase[numLanes] = { -7.0f, -2.0f, 2.0f, 7.0f };
-    float lanePanBase[numLanes]    = { -0.8f, -0.3f, 0.3f, 0.8f };
+    // 1/2/4 logical groups depending on mode
+    WestPatchGroupState groups[maxGroups];
+    GroupEnvelopeManager groupEnvelopeManager;
 
+    //==============================================================================
+    // Still global
     NoiseSource noiseSource;
     FunctionGenerator281 functionGenerator281;
     Uncertainty266 uncertainty266;
 
+    //==============================================================================
+    // Runtime / cached state
     double currentSampleRate = 44100.0;
-    float frequency = 440.0f;
-    bool isNoteOn = false;
-    int currentMidiNote = 69;
-    float modEnvelope = 0.0f;
     float outputLevel = 0.15f;
 
-    float smoothedFoldAmount = 2.5f;
-    float smoothedAttackTime = 0.05f;
-    float smoothedReleaseTime = 0.3f;
-    float smoothedLpgAmount = 0.12f;
-    float smoothedModDepth = 1.2f;
-    float smoothedSynthLevel = 1.0f;
-    float smoothedInputLevel = 0.0f;
-    float smoothedNoiseLevel = 0.0f;
-
-    float funcBPhase = 0.0f;
-    float smoothedFuncBRate = 2.0f;
-    float smoothedFuncBDepth = 20.0f;
-
-    float uncertaintyPhase = 0.0f;
-    float smoothRandomValue = 0.0f;
-    float smoothRandomTarget = 0.0f;
-    float steppedRandomValue = 0.0f;
-    float smoothedUncertaintyRate = 1.2f;
-    float smoothedUncertaintySmoothDepth = 0.8f;
-    float smoothedUncertaintySteppedDepth = 8.0f;
-
-    float smoothedTest266SmoothToFold = 0.15f;
-    float smoothedTest266SteppedToPitch = 0.20f;
-    float smoothedTest266BiasToLpg = 0.10f;
-    float smoothedTest266PulseToTrigger = 0.0f;
-
-    float smoothedDetuneAmount = 0.35f;
-    float smoothedStereoSpread = 0.60f;
-
-    float smoothedComplexModRatio = 2.0f;
-    float smoothedComplexFmAmount = 30.0f;
-    float smoothedComplexOscMix = 0.0f;
+    float laneDetuneBase[numLanes] = { -7.0f, -2.0f, 2.0f, 7.0f };
+    float lanePanBase[numLanes]    = { -0.8f, -0.3f, 0.3f, 0.8f };
 
     bool previous266PulseHigh = false;
 
-    bool hasActiveRoutingForDestination (ModDestination destination) const;
+    //==============================================================================
+    // Helpers
     int laneToGroup (int laneIndex) const noexcept;
     int getNumGroups() const noexcept;
     int findGroupForNoteOn() const noexcept;
+
+    void resetGroups() noexcept;
     void noteOnToGroup (int midiNoteNumber) noexcept;
     void noteOffFromGroups (int midiNoteNumber) noexcept;
+
     void renderSample (float inputSample, float& outL, float& outR) noexcept;
 
+    bool hasActiveRoutingForDestination (ModDestination destination) const;
     static float mapSteppedRandomToQuantizedSemitoneOffset (float steppedValue,
                                                             float depthNormalized) noexcept;
 
