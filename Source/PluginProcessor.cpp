@@ -270,18 +270,21 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     const auto totalNumInputChannels = getTotalNumInputChannels();
     const auto totalNumOutputChannels = getTotalNumOutputChannels();
+    const int numSamples = buffer.getNumSamples();
 
     for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+        buffer.clear (i, 0, numSamples);
 
     groupEnvelopeManager.setNumGroups (getNumGroups());
     groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
     functionGenerator281.setCycle (funcBCycle);
 
-    for (const auto metadata : midiMessages)
-    {
-        const auto msg = metadata.getMessage();
+    // Move incoming MIDI aside so we can consume it at sample offsets.
+    juce::MidiBuffer incomingMidi;
+    incomingMidi.swapWith (midiMessages);
 
+    auto handleMidiMessage = [this] (const juce::MidiMessage& msg)
+    {
         if (msg.isNoteOn())
         {
             noteOnToGroup (msg.getNoteNumber());
@@ -295,18 +298,26 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             resetGroups();
         }
-    }
+    };
 
-    midiMessages.clear();
+    juce::MidiBuffer::Iterator midiIterator (incomingMidi);
+    juce::MidiMessage currentMidiMessage;
+    int currentMidiSample = 0;
+    bool hasMidiEvent = midiIterator.getNextEvent (currentMidiMessage, currentMidiSample);
 
-    auto* left  = buffer.getWritePointer (0);
+    auto* left = buffer.getWritePointer (0);
     auto* right = buffer.getNumChannels() > 1 ? buffer.getWritePointer (1) : nullptr;
-
     auto* inL = totalNumInputChannels > 0 ? buffer.getReadPointer (0) : nullptr;
     auto* inR = totalNumInputChannels > 1 ? buffer.getReadPointer (1) : nullptr;
 
-    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    for (int sample = 0; sample < numSamples; ++sample)
     {
+        while (hasMidiEvent && currentMidiSample <= sample)
+        {
+            handleMidiMessage (currentMidiMessage);
+            hasMidiEvent = midiIterator.getNextEvent (currentMidiMessage, currentMidiSample);
+        }
+
         float inputSample = 0.0f;
 
         if (inL != nullptr && inR != nullptr)
@@ -320,6 +331,7 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         renderSample (inputSample, outL, outR);
 
         left[sample] = outL;
+
         if (right != nullptr)
             right[sample] = outR;
     }
