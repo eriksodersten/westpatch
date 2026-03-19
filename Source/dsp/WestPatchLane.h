@@ -1,7 +1,6 @@
 #pragma once
 
 #include <JuceHeader.h>
-
 #include "Oscillator.h"
 #include "Wavefolder.h"
 #include "LowPassGate.h"
@@ -12,7 +11,6 @@ struct WestPatchLane
     Oscillator modOsc;
     Wavefolder wavefolder;
     LowPassGate lpg;
-
     float frequency = 440.0f;
 
     void prepare (double sampleRate)
@@ -28,7 +26,8 @@ struct WestPatchLane
                          float oscMix,
                          float synthLevel,
                          float foldValue,
-                         float lpgEnvelope,
+                         float lpgCutoffEnvelope,
+                         float lpgOutputEnvelope,
                          float lpgAmount,
                          float lpgCV,
                          float noiseIn)
@@ -70,7 +69,8 @@ struct WestPatchLane
 
         return lpg.process (
             synthFolded + noiseFolded,
-            lpgEnvelope,
+            lpgCutoffEnvelope,
+            lpgOutputEnvelope,
             lpgAmount,
             lpgCV
         );

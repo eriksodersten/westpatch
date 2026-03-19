@@ -7,7 +7,8 @@ public:
     void reset() noexcept;
 
     float process (float input,
-                   float envelope,
+                   float cutoffEnvelope,
+                   float outputEnvelope,
                    float amount,
                    float cv) noexcept;
 

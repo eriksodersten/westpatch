@@ -392,23 +392,30 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float foldValue = juce::jmax (0.0f, foldAmount + foldModAmount);
         const float noiseIn = noiseSource.process() * noiseLevel;
 
-        float laneLpgEnv = 1.0f;
+        float toneModeBase = 1.0f;
 
         switch (toneMode)
         {
             case ToneMode::West:
-                laneLpgEnv = 1.0f;
+                toneModeBase = 1.0f;
                 break;
             case ToneMode::Moog:
-                laneLpgEnv = 0.9f;
+                toneModeBase = 0.9f;
                 break;
             case ToneMode::Roland:
-                laneLpgEnv = 0.8f;
+                toneModeBase = 0.8f;
                 break;
             default:
-                laneLpgEnv = 1.0f;
+                toneModeBase = 1.0f;
                 break;
         }
+
+        const float laneLpgCutoffEnv =
+            juce::jlimit (0.0f, 1.0f, groupEnv * toneModeBase);
+
+        // Behåll tone-mode output scaling ungefär som idag,
+        // men låt group envelope styra cutoff/tone.
+        const float laneLpgOutputEnv = toneModeBase;
 
         float laneOut = lanes[laneIndex].renderComplex (
             laneFreqHz,
@@ -417,7 +424,8 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             complexOscMix,
             synthLevel,
             foldValue,
-            laneLpgEnv,
+            laneLpgCutoffEnv,
+            laneLpgOutputEnv,
             lpgAmount,
             lpgCvMod,
             noiseIn
@@ -425,6 +433,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
 
         // First group-aware route: ADSR -> amp
         laneOut *= groupEnv;
+
 
         float ext = inputSample * inputLevel;
         if (gateExternalInput)
