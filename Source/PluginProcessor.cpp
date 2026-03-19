@@ -174,25 +174,46 @@ int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
 {
     const int numGroups = getNumGroups();
 
+    // 1) Prefer truly idle groups: not gated and no envelope activity.
     for (int g = 0; g < numGroups; ++g)
     {
-        if (! groups[g].gate)
+        if (!groups[g].gate && !groupEnvelopeManager.isEnvelopeActive(g))
             return g;
     }
 
-    int oldestGroup = 0;
-    std::uint64_t oldestSerial = groupAllocationSerial[0];
+    // 2) Otherwise reuse the oldest releasing group.
+    int oldestReleasingGroup = -1;
+    std::uint64_t oldestReleasingSerial = 0;
 
-    for (int g = 1; g < numGroups; ++g)
+    for (int g = 0; g < numGroups; ++g)
     {
-        if (groupAllocationSerial[g] < oldestSerial)
+        if (!groups[g].gate && groupEnvelopeManager.isEnvelopeActive(g))
         {
-            oldestSerial = groupAllocationSerial[g];
-            oldestGroup = g;
+            if (oldestReleasingGroup < 0 || groupAllocationSerial[g] < oldestReleasingSerial)
+            {
+                oldestReleasingGroup = g;
+                oldestReleasingSerial = groupAllocationSerial[g];
+            }
         }
     }
 
-    return oldestGroup;
+    if (oldestReleasingGroup >= 0)
+        return oldestReleasingGroup;
+
+    // 3) Finally steal the oldest actively gated group.
+    int oldestActiveGroup = 0;
+    std::uint64_t oldestActiveSerial = groupAllocationSerial[0];
+
+    for (int g = 1; g < numGroups; ++g)
+    {
+        if (groupAllocationSerial[g] < oldestActiveSerial)
+        {
+            oldestActiveSerial = groupAllocationSerial[g];
+            oldestActiveGroup = g;
+        }
+    }
+
+    return oldestActiveGroup;
 }
 
 int WestPatchAudioProcessor::findGroupForNoteOff (int midiNoteNumber) const noexcept
@@ -260,8 +281,10 @@ void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
 
     group.gate = false;
     group.midiNote = -1;
-    groupAllocationSerial[groupIndex] = 0;
 
+    // Keep frequencyHz during release so the tail stays on pitch.
+    // Keep allocation serial during release so allocator can rank
+    // releasing groups deterministically.
     groupEnvelopeManager.noteOff (groupIndex);
 }
 

@@ -18,7 +18,7 @@ public:
 
     void noteOn(int groupIndex) noexcept;
     void noteOff(int groupIndex) noexcept;
-
+    bool isEnvelopeActive(int groupIndex) const noexcept;
     float getNextSample(int groupIndex) noexcept;
 
 private:
