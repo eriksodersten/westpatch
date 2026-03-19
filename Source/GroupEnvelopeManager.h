@@ -1,7 +1,7 @@
 #pragma once
 
-#include <array>
 #include <JuceHeader.h>
+#include <array>
 
 class GroupEnvelopeManager
 {
@@ -10,7 +10,6 @@ public:
 
     void prepare(double sampleRate);
     void reset();
-
     void setNumGroups(int newNumGroups);
     int getNumGroups() const noexcept { return numGroups; }
 
@@ -18,7 +17,7 @@ public:
 
     void noteOn(int groupIndex) noexcept;
     void noteOff(int groupIndex) noexcept;
-
+    bool isEnvelopeActive(int groupIndex) const noexcept;
     float getNextSample(int groupIndex) noexcept;
 
 private:
@@ -27,7 +26,6 @@ private:
 
     std::array<juce::ADSR, maxGroups> envelopes;
     juce::ADSR::Parameters params {};
-
     int numGroups = 1;
     std::array<int, maxGroups> activeCounts { 0, 0, 0, 0 };
 };

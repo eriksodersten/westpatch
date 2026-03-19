@@ -174,14 +174,46 @@ int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
 {
     const int numGroups = getNumGroups();
 
+    // 1) Prefer truly idle groups.
     for (int g = 0; g < numGroups; ++g)
     {
-        if (! groups[g].gate)
+        if (!groups[g].gate && !groupEnvelopeManager.isEnvelopeActive(g))
             return g;
     }
 
-    // Simple voice stealing for now
-    return 0;
+    // 2) Otherwise reuse the oldest releasing group.
+    int oldestReleasingGroup = -1;
+    std::uint64_t oldestReleasingSerial = 0;
+
+    for (int g = 0; g < numGroups; ++g)
+    {
+        if (!groups[g].gate && groupEnvelopeManager.isEnvelopeActive(g))
+        {
+            if (oldestReleasingGroup < 0 || groupAllocationSerial[g] < oldestReleasingSerial)
+            {
+                oldestReleasingGroup = g;
+                oldestReleasingSerial = groupAllocationSerial[g];
+            }
+        }
+    }
+
+    if (oldestReleasingGroup >= 0)
+        return oldestReleasingGroup;
+
+    // 3) Finally steal the oldest still-gated group.
+    int oldestActiveGroup = 0;
+    std::uint64_t oldestActiveSerial = groupAllocationSerial[0];
+
+    for (int g = 1; g < numGroups; ++g)
+    {
+        if (groupAllocationSerial[g] < oldestActiveSerial)
+        {
+            oldestActiveSerial = groupAllocationSerial[g];
+            oldestActiveGroup = g;
+        }
+    }
+
+    return oldestActiveGroup;
 }
 
 void WestPatchAudioProcessor::resetGroups() noexcept
@@ -227,9 +259,10 @@ void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
 
     group.gate = false;
     group.midiNote = -1;
-    groupAllocationSerial[groupIndex] = 0;
 
-    // Behåll frequencyHz orörd så att release-tail ligger kvar på rätt pitch.
+    // Keep frequencyHz during release so tails stay on pitch.
+    // Keep allocation serial through release; it will be overwritten
+    // on the next allocation or cleared by resetGroups().
     groupEnvelopeManager.noteOff (groupIndex);
 }
 

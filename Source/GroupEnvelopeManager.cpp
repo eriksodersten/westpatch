@@ -34,7 +34,6 @@ void GroupEnvelopeManager::setAttackRelease(float attackSeconds, float releaseSe
     params.decay = 0.0f;
     params.sustain = 1.0f;
     params.release = juce::jmax(0.0001f, releaseSeconds);
-
     applyParameters();
 }
 
@@ -58,6 +57,14 @@ void GroupEnvelopeManager::noteOff(int groupIndex) noexcept
 
     if (activeCounts[groupIndex] == 0)
         envelopes[groupIndex].noteOff();
+}
+
+bool GroupEnvelopeManager::isEnvelopeActive(int groupIndex) const noexcept
+{
+    if (!isValidGroup(groupIndex))
+        return false;
+
+    return envelopes[groupIndex].isActive();
 }
 
 float GroupEnvelopeManager::getNextSample(int groupIndex) noexcept
