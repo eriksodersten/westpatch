@@ -469,11 +469,16 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 break;
         }
 
-        const float laneLpgCutoffEnv =
-            juce::jlimit (0.0f, 1.0f, groupEnv * toneModeBase);
+        constexpr float groupToneCurve = 0.90f;
 
-        // Behåll tone-mode output scaling ungefär som idag,
-        // men låt group envelope styra cutoff/tone.
+        const float shapedGroupToneEnv =
+            std::pow (juce::jlimit (0.0f, 1.0f, groupEnv), groupToneCurve);
+
+        const float laneLpgCutoffEnv =
+            juce::jlimit (0.0f, 1.0f, shapedGroupToneEnv * toneModeBase);
+
+        // Behåll tone-mode output scaling exakt som idag.
+        // Bara cutoff/tone får den nya kurvan.
         const float laneLpgOutputEnv = toneModeBase;
 
         float laneOut = lanes[laneIndex].renderComplex (
