@@ -186,13 +186,15 @@ int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
 
 void WestPatchAudioProcessor::resetGroups() noexcept
 {
-    for (auto& group : groups)
+    for (int g = 0; g < maxGroups; ++g)
     {
-        group.gate = false;
-        group.midiNote = -1;
-        group.frequencyHz = 440.0f;
+        groups[g].gate = false;
+        groups[g].midiNote = -1;
+        groups[g].frequencyHz = 440.0f;
+        groupAllocationSerial[g] = 0;
     }
 
+    nextAllocationSerial = 1;
     groupEnvelopeManager.reset();
 }
 
@@ -206,24 +208,29 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     group.gate = true;
     group.midiNote = midiNoteNumber;
     group.frequencyHz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
+    groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
+    // Bevara main-beteendet:
+    // retrigger bara om gruppen var inaktiv.
     if (wasInactive)
         groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
 {
-    for (int g = 0; g < getNumGroups(); ++g)
-    {
-        auto& group = groups[g];
+    const int groupIndex = findGroupForNoteOff (midiNoteNumber);
 
-        if (group.gate && group.midiNote == midiNoteNumber)
-        {
-            group.gate = false;
-            group.midiNote = -1;
-            groupEnvelopeManager.noteOff (g);
-        }
-    }
+    if (groupIndex < 0)
+        return;
+
+    auto& group = groups[groupIndex];
+
+    group.gate = false;
+    group.midiNote = -1;
+    groupAllocationSerial[groupIndex] = 0;
+
+    // Behåll frequencyHz orörd så att release-tail ligger kvar på rätt pitch.
+    groupEnvelopeManager.noteOff (groupIndex);
 }
 
 //==============================================================================
@@ -316,6 +323,28 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (right != nullptr)
             right[sample] = outR;
     }
+}
+
+int WestPatchAudioProcessor::findGroupForNoteOff (int midiNoteNumber) const noexcept
+{
+    int bestGroup = -1;
+    std::uint64_t newestSerial = 0;
+
+    for (int g = 0; g < getNumGroups(); ++g)
+    {
+        const auto& group = groups[g];
+
+        if (group.gate && group.midiNote == midiNoteNumber)
+        {
+            if (bestGroup < 0 || groupAllocationSerial[g] > newestSerial)
+            {
+                bestGroup = g;
+                newestSerial = groupAllocationSerial[g];
+            }
+        }
+    }
+
+    return bestGroup;
 }
 
 void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept

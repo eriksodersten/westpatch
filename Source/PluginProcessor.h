@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include <cstdint>
 #include "core/WestPatchGroupState.h"
 #include "core/SignalBus.h"
 #include "GroupEnvelopeManager.h"
@@ -177,17 +178,18 @@ private:
     float lanePanBase[numLanes]    = { -0.8f, -0.3f, 0.3f, 0.8f };
 
     bool previous266PulseHigh = false;
+    std::uint64_t groupAllocationSerial[maxGroups] = {};
+    std::uint64_t nextAllocationSerial = 1;
 
     //==============================================================================
     // Helpers
     int laneToGroup (int laneIndex) const noexcept;
     int getNumGroups() const noexcept;
     int findGroupForNoteOn() const noexcept;
-
+    int findGroupForNoteOff (int midiNoteNumber) const noexcept;
     void resetGroups() noexcept;
     void noteOnToGroup (int midiNoteNumber) noexcept;
     void noteOffFromGroups (int midiNoteNumber) noexcept;
-
     void renderSample (float inputSample, float& outL, float& outR) noexcept;
 
     bool hasActiveRoutingForDestination (ModDestination destination) const;
