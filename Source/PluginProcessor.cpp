@@ -203,12 +203,14 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 
     const bool wasInactive = ! group.gate;
 
+    if (! wasInactive)
+        groupEnvelopeManager.noteOff (groupIndex); // retrigger on steal
+
     group.gate = true;
     group.midiNote = midiNoteNumber;
     group.frequencyHz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
 
-    if (wasInactive)
-        groupEnvelopeManager.noteOn (groupIndex);
+    groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -340,6 +342,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     const bool pulseHigh = uncertaintyOut.pulse > 0.5f;
     if (pulseHigh && ! previous266PulseHigh && test266PulseToTrigger > 0.001f)
         functionGenerator281.trigger();
+
     previous266PulseHigh = pulseHigh;
 
     const float modSources[numModSources] =
@@ -360,21 +363,18 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         lpgCvMod          += modSources[s] * modulationMatrix[s][static_cast<int> (ModDestination::LPG)];
     }
 
-    foldModAmount += uncertaintyOut.smooth * test266SmoothToFold;
+    foldModAmount     += uncertaintyOut.smooth * test266SmoothToFold;
     pitchModSemitones += mapSteppedRandomToQuantizedSemitoneOffset (uncertaintyOut.stepped,
                                                                     test266SteppedToPitch);
-    lpgCvMod += uncertaintyOut.bias * test266BiasToLpg;
+    lpgCvMod          += uncertaintyOut.bias * test266BiasToLpg;
 
     float sumL = 0.0f;
     float sumR = 0.0f;
-    
+
     float groupEnvValues[maxGroups] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     for (int g = 0; g < getNumGroups(); ++g)
-    {
-        groupEnvValues[g] =
-            juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
-    }
+        groupEnvValues[g] = juce::jlimit (0.0f, 1.0f, groupEnvelopeManager.getNextSample (g));
 
     for (int laneIndex = 0; laneIndex < numLanes; ++laneIndex)
     {
@@ -384,7 +384,6 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float groupEnv = groupEnvValues[groupIndex];
 
         const float baseFreq = group.frequencyHz > 0.0f ? group.frequencyHz : 440.0f;
-
         const float detuneSemitones = laneDetuneBase[laneIndex] * detuneAmount;
         const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
         const float laneFreqHz = baseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
@@ -392,23 +391,26 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float foldValue = juce::jmax (0.0f, foldAmount + foldModAmount);
         const float noiseIn = noiseSource.process() * noiseLevel;
 
-        float laneLpgEnv = 1.0f;
-
+        float toneModeBase = 1.0f;
         switch (toneMode)
         {
-            case ToneMode::West:
-                laneLpgEnv = 1.0f;
-                break;
-            case ToneMode::Moog:
-                laneLpgEnv = 0.9f;
-                break;
-            case ToneMode::Roland:
-                laneLpgEnv = 0.8f;
-                break;
-            default:
-                laneLpgEnv = 1.0f;
-                break;
+            case ToneMode::West:   toneModeBase = 1.0f; break;
+            case ToneMode::Moog:   toneModeBase = 0.9f; break;
+            case ToneMode::Roland: toneModeBase = 0.8f; break;
+            default:               toneModeBase = 1.0f; break;
         }
+
+        const float shapedToneContour =
+            std::pow (juce::jlimit (0.0f, 1.0f, groupEnv),
+                      juce::jmax (0.1f, toneEnvCurve));
+
+        const float laneToneCv =
+            juce::jlimit (0.0f, 1.0f, toneEnvBias + (shapedToneContour * toneEnvAmount));
+
+        const float laneLpgCutoffEnv =
+            juce::jlimit (0.0f, 1.0f, laneToneCv * toneModeBase);
+
+        const float laneLpgOutputEnv = toneModeBase;
 
         float laneOut = lanes[laneIndex].renderComplex (
             laneFreqHz,
@@ -417,13 +419,14 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             complexOscMix,
             synthLevel,
             foldValue,
-            laneLpgEnv,
+            laneLpgCutoffEnv,
+            laneLpgOutputEnv,
             lpgAmount,
             lpgCvMod,
             noiseIn
         );
 
-        // First group-aware route: ADSR -> amp
+        // amp follows the primary group contour directly
         laneOut *= groupEnv;
 
         float ext = inputSample * inputLevel;
@@ -443,7 +446,6 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     outL = sumL * outputLevel;
     outR = sumR * outputLevel;
 }
-
 //==============================================================================
 bool WestPatchAudioProcessor::hasEditor() const
 {
@@ -498,6 +500,10 @@ void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     for (int s = 0; s < numModSources; ++s)
         for (int d = 0; d < numModDestinations; ++d)
             stream.writeFloat (modulationMatrix[s][d]);
+
+    stream.writeFloat (toneEnvAmount);
+    stream.writeFloat (toneEnvBias);
+    stream.writeFloat (toneEnvCurve);
 }
 
 void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -561,6 +567,37 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
             if (! stream.isExhausted())
                 modulationMatrix[s][d] = stream.readFloat();
         }
+    }
+
+    const auto remainingBytes = stream.getNumBytesRemaining();
+
+    if (remainingBytes == 0)
+    {
+        // main state: no linked-contour extras
+    }
+    else if (remainingBytes == 3 * sizeof (float))
+    {
+        toneEnvAmount = stream.readFloat();
+        toneEnvBias   = stream.readFloat();
+        toneEnvCurve  = stream.readFloat();
+    }
+    else if (remainingBytes == 7 * sizeof (float))
+    {
+        // old temporary layout:
+        // toneAttackTime, toneDecayTime, toneSustainLevel, toneReleaseTime,
+        // toneEnvAmount, toneEnvBias, toneEnvCurve
+        (void) stream.readFloat();
+        (void) stream.readFloat();
+        (void) stream.readFloat();
+        (void) stream.readFloat();
+
+        toneEnvAmount = stream.readFloat();
+        toneEnvBias   = stream.readFloat();
+        toneEnvCurve  = stream.readFloat();
+    }
+    else
+    {
+        // Unknown tail; leave linked-contour defaults untouched.
     }
 
     groupEnvelopeManager.setNumGroups (getNumGroups());

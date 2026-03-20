@@ -14,14 +14,14 @@ void LowPassGate::reset() noexcept
 }
 
 float LowPassGate::process (float input,
-                            float envelope,
+                            float cutoffEnvelope,
+                            float outputEnvelope,
                             float amount,
                             float cv) noexcept
 {
-    float cutoff = 0.001f + (envelope * amount) + cv;
+    float cutoff = 0.001f + (cutoffEnvelope * amount) + cv;
     cutoff = std::clamp (cutoff, 0.001f, 1.0f);
 
     state += cutoff * (input - state);
-
-    return state * envelope;
+    return state * outputEnvelope;
 }

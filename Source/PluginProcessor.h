@@ -95,6 +95,11 @@ public:
     // Voice envelope (group-level)
     float attackTime = 0.05f;
     float releaseTime = 0.30f;
+    
+    // Linked contour shaping for tone
+    float toneEnvAmount = 1.0f;
+    float toneEnvBias   = 0.08f;
+    float toneEnvCurve  = 0.85f;
 
     // Lane sound params
     float foldAmount = 2.5f;

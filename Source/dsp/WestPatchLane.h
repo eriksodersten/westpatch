@@ -28,7 +28,8 @@ struct WestPatchLane
                          float oscMix,
                          float synthLevel,
                          float foldValue,
-                         float lpgEnvelope,
+                         float lpgCutoffEnvelope,
+                         float lpgOutputEnvelope,
                          float lpgAmount,
                          float lpgCV,
                          float noiseIn)
@@ -70,7 +71,8 @@ struct WestPatchLane
 
         return lpg.process (
             synthFolded + noiseFolded,
-            lpgEnvelope,
+            lpgCutoffEnvelope,
+            lpgOutputEnvelope,
             lpgAmount,
             lpgCV
         );
