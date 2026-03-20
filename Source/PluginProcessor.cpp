@@ -201,16 +201,20 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     const int groupIndex = juce::jlimit (0, getNumGroups() - 1, findGroupForNoteOn());
     auto& group = groups[groupIndex];
 
-    const bool wasInactive = ! group.gate;
-
-    if (! wasInactive)
-        groupEnvelopeManager.noteOff (groupIndex); // retrigger on steal
+    const bool wasGateActive = group.gate;
+    const bool wasEnvelopeActive = groupEnvelopeManager.isEnvelopeActive (groupIndex);
+    const bool wasReleasing = (! wasGateActive) && wasEnvelopeActive;
 
     group.gate = true;
     group.midiNote = midiNoteNumber;
     group.frequencyHz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
 
-    groupEnvelopeManager.noteOn (groupIndex);
+    if (wasReleasing)
+        groupEnvelopeManager.hardRetrigger (groupIndex);
+    else if (wasGateActive)
+        groupEnvelopeManager.softRetrigger (groupIndex);
+    else
+        groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept

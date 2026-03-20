@@ -1,11 +1,11 @@
 #include "GroupEnvelopeManager.h"
+#include <cstddef>
 
-void GroupEnvelopeManager::prepare(double sampleRate)
+void GroupEnvelopeManager::prepare (double sampleRate)
 {
     for (auto& env : envelopes)
-        env.setSampleRate(sampleRate);
+        env.setSampleRate (sampleRate);
 
-    applyParameters();
     reset();
 }
 
@@ -14,12 +14,12 @@ void GroupEnvelopeManager::reset()
     for (auto& env : envelopes)
         env.reset();
 
-    activeCounts.fill(0);
+    activeCounts.fill (0);
 }
 
-void GroupEnvelopeManager::setNumGroups(int newNumGroups)
+void GroupEnvelopeManager::setNumGroups (int newNumGroups)
 {
-    const int clamped = juce::jlimit(1, maxGroups, newNumGroups);
+    const int clamped = juce::jlimit (1, maxGroups, newNumGroups);
 
     if (clamped == numGroups)
         return;
@@ -28,53 +28,86 @@ void GroupEnvelopeManager::setNumGroups(int newNumGroups)
     reset();
 }
 
-void GroupEnvelopeManager::setAttackRelease(float attackSeconds, float releaseSeconds)
+void GroupEnvelopeManager::setAttackRelease (float attackSeconds, float releaseSeconds)
 {
-    params.attack = juce::jmax(0.0001f, attackSeconds);
-    params.decay = 0.0f;
+    params.attack  = juce::jmax (0.0001f, attackSeconds);
+    params.decay   = 0.0f;
     params.sustain = 1.0f;
-    params.release = juce::jmax(0.0001f, releaseSeconds);
+    params.release = juce::jmax (0.0001f, releaseSeconds);
 
-    applyParameters();
+    for (auto& env : envelopes)
+        env.setParameters (params);
 }
 
-void GroupEnvelopeManager::noteOn(int groupIndex) noexcept
+void GroupEnvelopeManager::noteOn (int groupIndex) noexcept
 {
-    if (!isValidGroup(groupIndex))
+    if (! isValidGroup (groupIndex))
         return;
 
-    if (activeCounts[groupIndex] == 0)
-        envelopes[groupIndex].noteOn();
+    const auto index = static_cast<std::size_t> (groupIndex);
 
-    ++activeCounts[groupIndex];
+    if (activeCounts[index] == 0)
+        envelopes[index].noteOn();
+
+    ++activeCounts[index];
 }
 
-void GroupEnvelopeManager::noteOff(int groupIndex) noexcept
+void GroupEnvelopeManager::noteOff (int groupIndex) noexcept
 {
-    if (!isValidGroup(groupIndex))
+    if (! isValidGroup (groupIndex))
         return;
 
-    activeCounts[groupIndex] = juce::jmax(0, activeCounts[groupIndex] - 1);
+    const auto index = static_cast<std::size_t> (groupIndex);
 
-    if (activeCounts[groupIndex] == 0)
-        envelopes[groupIndex].noteOff();
+    activeCounts[index] = juce::jmax (0, activeCounts[index] - 1);
+
+    if (activeCounts[index] == 0)
+        envelopes[index].noteOff();
 }
 
-float GroupEnvelopeManager::getNextSample(int groupIndex) noexcept
+bool GroupEnvelopeManager::isEnvelopeActive (int groupIndex) const noexcept
 {
-    if (!isValidGroup(groupIndex))
+    if (! isValidGroup (groupIndex))
+        return false;
+
+    const auto index = static_cast<std::size_t> (groupIndex);
+    return envelopes[index].isActive();
+}
+
+void GroupEnvelopeManager::softRetrigger (int groupIndex) noexcept
+{
+    if (! isValidGroup (groupIndex))
+        return;
+
+    const auto index = static_cast<std::size_t> (groupIndex);
+
+    envelopes[index].noteOff();
+    envelopes[index].noteOn();
+    activeCounts[index] = 1;
+}
+
+void GroupEnvelopeManager::hardRetrigger (int groupIndex) noexcept
+{
+    if (! isValidGroup (groupIndex))
+        return;
+
+    const auto index = static_cast<std::size_t> (groupIndex);
+
+    envelopes[index].reset();
+    envelopes[index].noteOn();
+    activeCounts[index] = 1;
+}
+
+float GroupEnvelopeManager::getNextSample (int groupIndex) noexcept
+{
+    if (! isValidGroup (groupIndex))
         return 0.0f;
 
-    return envelopes[groupIndex].getNextSample();
+    const auto index = static_cast<std::size_t> (groupIndex);
+    return envelopes[index].getNextSample();
 }
 
-void GroupEnvelopeManager::applyParameters()
-{
-    for (auto& env : envelopes)
-        env.setParameters(params);
-}
-
-bool GroupEnvelopeManager::isValidGroup(int groupIndex) const noexcept
+bool GroupEnvelopeManager::isValidGroup (int groupIndex) const noexcept
 {
     return groupIndex >= 0 && groupIndex < numGroups;
 }
