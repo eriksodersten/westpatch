@@ -271,14 +271,16 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 
     if (sameGroupHandoff)
         {
-            if (reusingReleasingGroup)
-            {
-                auto& cf = crossfades[groupIndex];
-                cf.active = true;
-                cf.samplesRemaining = crossfadeSamples;
-                for (int i = 0; i < numLanes; ++i)
-                    cf.oldSignal[i] = laneOutputCache[i];
-            }
+            if (reusingReleasingGroup || stealingActiveGroup)
+                        {
+                            auto& cf = crossfades[groupIndex];
+                            cf.active = true;
+                            DBG ("CROSSFADE START steal=" + juce::String (stealingActiveGroup ? 1 : 0)
+                                 + " oldSignal[0]=" + juce::String (cf.oldSignal[0]));
+                            cf.samplesRemaining = crossfadeSamples;
+                            for (int i = 0; i < numLanes; ++i)
+                                cf.oldSignal[i] = laneOutputCache[i];
+                        }
 
             handoffDebug.active = true;
         handoffDebug.groupIndex = groupIndex;
@@ -298,21 +300,15 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
              + " newFreq=" + juce::String (handoffDebug.newFrequencyHz));
     }
 
-    if (stealingActiveGroup)
-        {
-            groupEnvelopeManager.noteOff (groupIndex);
-            // Steal: forceNoteOn startar attack från 0, ingen crossfade
-        }
+    group.gate = true;
+            group.midiNote = midiNoteNumber;
+            group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+            groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
-        group.gate = true;
-        group.midiNote = midiNoteNumber;
-        group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
-        groupAllocationSerial[groupIndex] = nextAllocationSerial++;
-
-        if (stealingActiveGroup)
-            groupEnvelopeManager.forceNoteOn (groupIndex);
-        else
-            groupEnvelopeManager.noteOn (groupIndex);
+            if (stealingActiveGroup)
+                groupEnvelopeManager.forceNoteOn (groupIndex);
+            else
+                groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -568,11 +564,12 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float laneOutPreAmp = laneOut;
 
         // First group-aware route: ADSR -> amp
-                laneOut *= groupEnv;
 
-                // Spara cache innan crossfade så oldSignal alltid är ren signal
+        laneOut *= groupEnv;
+
+                // Spara post-envelope signal som crossfade-referens
                 laneOutputCache[laneIndex] = laneOut;
-
+        
         // Crossfade vid handoff för att undvika fasklick
                 auto& cf = crossfades[groupIndex];
                 if (cf.active)

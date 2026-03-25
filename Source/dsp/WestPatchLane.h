@@ -13,12 +13,14 @@ struct WestPatchLane
     LowPassGate lpg;
     float frequency = 440.0f;
 
-    void prepare (double sampleRate)
-    {
-        carrierOsc.prepare (sampleRate);
-        modOsc.prepare (sampleRate);
-        lpg.prepare (sampleRate);
-    }
+    void reset()
+        {
+            carrierOsc.reset();
+            modOsc.reset();
+            lpg.reset();
+        }
+
+    void prepare (double sampleRate);
 
     float renderComplex (float carrierFrequencyHz,
                          float modRatio,
