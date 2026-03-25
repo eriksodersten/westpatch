@@ -48,6 +48,16 @@ void GroupEnvelopeManager::noteOn(int groupIndex) noexcept
     ++activeCounts[groupIndex];
 }
 
+void GroupEnvelopeManager::forceNoteOn(int groupIndex) noexcept
+{
+    if (!isValidGroup(groupIndex))
+        return;
+
+    envelopes[groupIndex].reset();
+    envelopes[groupIndex].noteOn();
+    activeCounts[groupIndex] = 1;
+}
+
 void GroupEnvelopeManager::noteOff(int groupIndex) noexcept
 {
     if (!isValidGroup(groupIndex))

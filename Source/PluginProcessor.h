@@ -153,7 +153,40 @@ private:
     //==============================================================================
     static constexpr int numLanes = 4;
     static constexpr int maxGroups = 4;
+    
+    // Serial counters for group allocation ordering
+    std::uint64_t groupAllocationSerial[maxGroups] = {};
+    std::uint64_t nextAllocationSerial = 1;
+    
+    struct HandoffDebugState
+    {
+        bool active = false;
+        int groupIndex = -1;
+        int samplesRemaining = 0;
+        int sampleCounter = 0;
+        float oldFrequencyHz = 0.0f;
+        float newFrequencyHz = 0.0f;
+        bool oldGate = false;
+        bool oldEnvActive = false;
+    };
 
+    static constexpr int handoffDebugSamples = 64;
+        HandoffDebugState handoffDebug;
+
+        //==============================================================================
+        // Crossfade state for handoff click suppression
+        struct GroupCrossfadeState
+        {
+            bool active = false;
+            int samplesRemaining = 0;
+            float oldSignal[numLanes] = {};
+        };
+
+        static constexpr int crossfadeSamples = 64;
+        GroupCrossfadeState crossfades[maxGroups];
+        float laneOutputCache[numLanes] = {};
+    
+    
     //==============================================================================
     // Always 4 lanes
     WestPatchLane lanes[numLanes];
@@ -180,6 +213,7 @@ private:
 
     //==============================================================================
     // Helpers
+    int findGroupForNoteOff (int midiNoteNumber) const noexcept;
     int laneToGroup (int laneIndex) const noexcept;
     int getNumGroups() const noexcept;
     int findGroupForNoteOn() const noexcept;

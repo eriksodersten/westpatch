@@ -177,7 +177,7 @@ int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
     // 1) Prefer truly idle groups: not gated and no envelope activity.
     for (int g = 0; g < numGroups; ++g)
     {
-        if (!groups[g].gate && !groupEnvelopeManager.isEnvelopeActive(g))
+        if (! groups[g].gate && ! groupEnvelopeManager.isEnvelopeActive (g))
             return g;
     }
 
@@ -187,7 +187,7 @@ int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
 
     for (int g = 0; g < numGroups; ++g)
     {
-        if (!groups[g].gate && groupEnvelopeManager.isEnvelopeActive(g))
+        if (! groups[g].gate && groupEnvelopeManager.isEnvelopeActive (g))
         {
             if (oldestReleasingGroup < 0 || groupAllocationSerial[g] < oldestReleasingSerial)
             {
@@ -249,7 +249,13 @@ void WestPatchAudioProcessor::resetGroups() noexcept
     }
 
     nextAllocationSerial = 1;
-    groupEnvelopeManager.reset();
+        groupEnvelopeManager.reset();
+
+        for (int g = 0; g < maxGroups; ++g)
+            crossfades[g] = {};
+
+        for (int i = 0; i < numLanes; ++i)
+            laneOutputCache[i] = 0.0f;
 }
 
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
@@ -258,16 +264,55 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     auto& group = groups[groupIndex];
 
     const bool stealingActiveGroup = group.gate;
+    const bool reusingReleasingGroup =
+        ! group.gate && groupEnvelopeManager.isEnvelopeActive (groupIndex);
+
+    const bool sameGroupHandoff = stealingActiveGroup || reusingReleasingGroup;
+
+    if (sameGroupHandoff)
+        {
+            if (reusingReleasingGroup)
+            {
+                auto& cf = crossfades[groupIndex];
+                cf.active = true;
+                cf.samplesRemaining = crossfadeSamples;
+                for (int i = 0; i < numLanes; ++i)
+                    cf.oldSignal[i] = laneOutputCache[i];
+            }
+
+            handoffDebug.active = true;
+        handoffDebug.groupIndex = groupIndex;
+        handoffDebug.samplesRemaining = handoffDebugSamples;
+        handoffDebug.sampleCounter = 0;
+        handoffDebug.oldFrequencyHz = group.frequencyHz;
+        handoffDebug.newFrequencyHz =
+            static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+        handoffDebug.oldGate = group.gate;
+        handoffDebug.oldEnvActive = groupEnvelopeManager.isEnvelopeActive (groupIndex);
+
+        DBG ("HANDOFF start"
+             + juce::String (" group=") + juce::String (groupIndex)
+             + " oldGate=" + juce::String (handoffDebug.oldGate ? 1 : 0)
+             + " oldEnvActive=" + juce::String (handoffDebug.oldEnvActive ? 1 : 0)
+             + " oldFreq=" + juce::String (handoffDebug.oldFrequencyHz)
+             + " newFreq=" + juce::String (handoffDebug.newFrequencyHz));
+    }
 
     if (stealingActiveGroup)
-        groupEnvelopeManager.noteOff (groupIndex);
+        {
+            groupEnvelopeManager.noteOff (groupIndex);
+            // Steal: forceNoteOn startar attack från 0, ingen crossfade
+        }
 
-    group.gate = true;
-    group.midiNote = midiNoteNumber;
-    group.frequencyHz = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
-    groupAllocationSerial[groupIndex] = nextAllocationSerial++;
+        group.gate = true;
+        group.midiNote = midiNoteNumber;
+        group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+        groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
-    groupEnvelopeManager.noteOn (groupIndex);
+        if (stealingActiveGroup)
+            groupEnvelopeManager.forceNoteOn (groupIndex);
+        else
+            groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -457,6 +502,9 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         groupEnvValues[g] =
             juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
     }
+    
+    float debugGroupPreAmp = 0.0f;
+    float debugGroupPostAmp = 0.0f;
 
     for (int laneIndex = 0; laneIndex < numLanes; ++laneIndex)
     {
@@ -515,11 +563,33 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             laneLpgOutputEnv,
             lpgAmount,
             lpgCvMod,
-            noiseIn
-        );
+            noiseIn);
+
+        const float laneOutPreAmp = laneOut;
 
         // First group-aware route: ADSR -> amp
-        laneOut *= groupEnv;
+                laneOut *= groupEnv;
+
+                // Spara cache innan crossfade så oldSignal alltid är ren signal
+                laneOutputCache[laneIndex] = laneOut;
+
+        // Crossfade vid handoff för att undvika fasklick
+                auto& cf = crossfades[groupIndex];
+                if (cf.active)
+                {
+                    const float t = 1.0f - (static_cast<float> (cf.samplesRemaining)
+                                            / static_cast<float> (crossfadeSamples));
+                    const float fadeIn  = std::sin (t * juce::MathConstants<float>::halfPi);
+                    const float fadeOut = std::cos (t * juce::MathConstants<float>::halfPi);
+                    laneOut = laneOut * fadeIn + cf.oldSignal[laneIndex] * fadeOut;
+                }
+                const float laneOutPostAmp = laneOut;
+
+        if (handoffDebug.active && groupIndex == handoffDebug.groupIndex)
+        {
+            debugGroupPreAmp += laneOutPreAmp;
+            debugGroupPostAmp += laneOutPostAmp;
+        }
 
 
         float ext = inputSample * inputLevel;
@@ -536,6 +606,37 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         sumR += laneOut * rightGain;
     }
 
+    for (int g = 0; g < getNumGroups(); ++g)
+        {
+            if (crossfades[g].active)
+            {
+                --crossfades[g].samplesRemaining;
+                if (crossfades[g].samplesRemaining <= 0)
+                    crossfades[g].active = false;
+            }
+        }
+    
+    if (handoffDebug.active)
+    {
+        const int g = handoffDebug.groupIndex;
+        DBG ("HANDOFF sample="
+             + juce::String (handoffDebug.sampleCounter)
+             + " group=" + juce::String (g)
+             + " env=" + juce::String (groupEnvValues[g])
+             + " freq=" + juce::String (groups[g].frequencyHz)
+             + " preAmp=" + juce::String (debugGroupPreAmp)
+             + " postAmp=" + juce::String (debugGroupPostAmp));
+
+        ++handoffDebug.sampleCounter;
+        --handoffDebug.samplesRemaining;
+
+        if (handoffDebug.samplesRemaining <= 0)
+        {
+            DBG ("HANDOFF end");
+            handoffDebug = {};
+        }
+    }
+    
     outL = sumL * outputLevel;
     outR = sumR * outputLevel;
 }
