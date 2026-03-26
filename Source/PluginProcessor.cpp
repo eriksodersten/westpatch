@@ -249,13 +249,19 @@ void WestPatchAudioProcessor::resetGroups() noexcept
     }
 
     nextAllocationSerial = 1;
-        groupEnvelopeManager.reset();
+    groupEnvelopeManager.reset();
 
-        for (int g = 0; g < maxGroups; ++g)
-            crossfades[g] = {};
+    for (int g = 0; g < maxGroups; ++g)
 
-        for (int i = 0; i < numLanes; ++i)
-            laneOutputCache[i] = 0.0f;
+    crossfades[g] = {};
+
+    for (int g = 0; g < maxGroups; ++g)
+
+    tails[g] = {};
+
+    for (int i = 0; i < numLanes; ++i)
+
+    laneOutputCache[i] = 0.0f;
 }
 
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
