@@ -279,28 +279,26 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     {
         if (reusingReleasingGroup || stealingActiveGroup)
         {
-            auto& cf = crossfades[groupIndex];
-            float cacheSum = 0.0f;
-            for (int i = 0; i < numLanes; ++i) cacheSum += laneOutputCache[i] * std::sqrt(0.5f * (1.0f - juce::jlimit(-1.0f, 1.0f, lanePanBase[i] * stereoSpread)));
-            DBG ("PRE-HANDOFF lastCache[0]=" + juce::String (laneOutputCache[0]) + " cacheSum=" + juce::String (cacheSum));
-                        for (int i = 0; i < 10; ++i)
-                        {
-                            int idx = (preHandoffRingIndex - 10 + i) % 10;
-                            DBG ("RING i=" + juce::String (i) + " outL=" + juce::String (preHandoffRingBuffer[idx]));
-                        }
-                        cf.active = true;                            preHandoffDebugCount = 5;
-                            fullBlockDebugCount = 256;
-            cf.samplesRemaining = crossfadeSamples;
+            auto& tail = tails[groupIndex];
+            tail = {};
+            tail.active = true;
+            tail.samplesRemaining = tailReleaseSamples;
+            tail.frequencyHz = group.frequencyHz > 0.0f ? group.frequencyHz : 440.0f;
+            tail.gain = juce::jlimit (0.0f, 1.0f, lastRenderedGroupEnv[groupIndex]);
+            tail.gainStep = tail.gain / static_cast<float> (tailReleaseSamples);
+
             for (int i = 0; i < numLanes; ++i)
-
             {
-
-             cf.oldSignal[i] = laneOutputCache[i];
-
+                if (laneToGroup (i) == groupIndex)
+                    tail.lanes[i] = lanes[i];
             }
 
-            DBG ("CROSSFADE START steal=" + juce::String (stealingActiveGroup ? 1 : 0)
-                            + " oldSignal[0]=" + juce::String (cf.oldSignal[0]));
+            crossfades[groupIndex] = {};
+
+            DBG ("TAIL START group=" + juce::String (groupIndex)
+                 + " steal=" + juce::String (stealingActiveGroup ? 1 : 0)
+                 + " gain=" + juce::String (tail.gain)
+                 + " freq=" + juce::String (tail.frequencyHz));
         }
         
         handoffDebug.active = true;
@@ -538,6 +536,75 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     float debugGroupPreAmp = 0.0f;
     float debugGroupPostAmp = 0.0f;
 
+    for (int g = 0; g < getNumGroups(); ++g)
+    {
+        auto& tail = tails[g];
+        if (! tail.active)
+            continue;
+
+        const float tailBaseFreq = tail.frequencyHz > 0.0f ? tail.frequencyHz : 440.0f;
+
+        for (int laneIndex = 0; laneIndex < numLanes; ++laneIndex)
+        {
+            if (laneToGroup (laneIndex) != g)
+                continue;
+
+            const float detuneSemitones = laneDetuneBase[laneIndex] * detuneAmount;
+            const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
+            const float laneFreqHz = tailBaseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
+
+            float toneModeBase = 1.0f;
+
+            switch (toneMode)
+            {
+                case ToneMode::West:
+                    toneModeBase = 1.0f;
+                    break;
+                case ToneMode::Moog:
+                    toneModeBase = 0.9f;
+                    break;
+                case ToneMode::Roland:
+                    toneModeBase = 0.8f;
+                    break;
+                default:
+                    toneModeBase = 1.0f;
+                    break;
+            }
+
+            constexpr float groupToneCurve = 0.90f;
+
+            const float shapedTailToneEnv =
+                std::pow (juce::jlimit (0.0f, 1.0f, tail.gain), groupToneCurve);
+
+            const float laneLpgCutoffEnv =
+                juce::jlimit (0.0f, 1.0f, shapedTailToneEnv * toneModeBase);
+
+            const float laneLpgOutputEnv = toneModeBase;
+
+            float laneOut = tail.lanes[laneIndex].renderComplex (
+                laneFreqHz,
+                complexModRatio,
+                complexFmAmount,
+                complexOscMix,
+                synthLevel,
+                juce::jmax (0.0f, foldAmount + foldModAmount),
+                laneLpgCutoffEnv,
+                laneLpgOutputEnv,
+                lpgAmount,
+                lpgCvMod,
+                0.0f);
+
+            laneOut *= tail.gain;
+
+            const float pan = juce::jlimit (-1.0f, 1.0f, lanePanBase[laneIndex] * stereoSpread);
+            const float leftGain  = std::sqrt (0.5f * (1.0f - pan));
+            const float rightGain = std::sqrt (0.5f * (1.0f + pan));
+
+            sumL += laneOut * leftGain;
+            sumR += laneOut * rightGain;
+        }
+    }
+
     for (int laneIndex = 0; laneIndex < numLanes; ++laneIndex)
     {
         const int groupIndex = laneToGroup (laneIndex);
@@ -640,14 +707,27 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     }
 
     for (int g = 0; g < getNumGroups(); ++g)
+    {
+        auto& tail = tails[g];
+        if (tail.active)
         {
-            if (crossfades[g].active)
-            {
-                --crossfades[g].samplesRemaining;
-                if (crossfades[g].samplesRemaining <= 0)
-                    crossfades[g].active = false;
-            }
+            tail.gain = juce::jmax (0.0f, tail.gain - tail.gainStep);
+            --tail.samplesRemaining;
+
+            if (tail.samplesRemaining <= 0 || tail.gain <= 0.0f)
+                tail.active = false;
         }
+    }
+
+    for (int g = 0; g < getNumGroups(); ++g)
+    {
+        if (crossfades[g].active)
+        {
+            --crossfades[g].samplesRemaining;
+            if (crossfades[g].samplesRemaining <= 0)
+                crossfades[g].active = false;
+        }
+    }
     
     if (handoffDebug.active)
     {
