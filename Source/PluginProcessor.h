@@ -196,7 +196,9 @@ private:
     GroupCrossfadeState crossfades[maxGroups];
 
     // Separate dying tail path for handoff.
-    // Scaffolding only in this step: no audio behavior yet.
+    // This stores a short output-domain tail buffer, not a frozen lane snapshot.
+
+    static constexpr int tailReleaseSamples = 64;
 
     struct GroupTailState
 
@@ -205,11 +207,10 @@ private:
      bool active = false;
 
      int samplesRemaining = 0;
-     float oldSignal[numLanes] = {};
+     std::array<float, tailReleaseSamples> left {};
+     std::array<float, tailReleaseSamples> right {};
 
     };
-
-    static constexpr int tailReleaseSamples = 64;
 
     GroupTailState tails[maxGroups];
 
