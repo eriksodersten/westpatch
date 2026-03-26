@@ -178,17 +178,42 @@ private:
         int preHandoffRingIndex = 0;
 
         //==============================================================================
-        // Crossfade state for handoff click suppression
-        struct GroupCrossfadeState
-        {
-            bool active = false;
-            int samplesRemaining = 0;
-            float oldSignal[numLanes] = {};
-        };
+    // Crossfade state for handoff click suppression
 
-        static constexpr int crossfadeSamples = 64;
-        GroupCrossfadeState crossfades[maxGroups];
-        float laneOutputCache[numLanes] = {};
+    struct GroupCrossfadeState
+
+    {
+
+     bool active = false;
+
+     int samplesRemaining = 0;
+     float oldSignal[numLanes] = {};
+
+    };
+
+    static constexpr int crossfadeSamples = 64;
+
+    GroupCrossfadeState crossfades[maxGroups];
+
+    // Separate dying tail path for handoff.
+    // Scaffolding only in this step: no audio behavior yet.
+
+    struct GroupTailState
+
+    {
+
+     bool active = false;
+
+     int samplesRemaining = 0;
+     float oldSignal[numLanes] = {};
+
+    };
+
+    static constexpr int tailReleaseSamples = 64;
+
+    GroupTailState tails[maxGroups];
+
+    float laneOutputCache[numLanes] = {};
     
     
     //==============================================================================
