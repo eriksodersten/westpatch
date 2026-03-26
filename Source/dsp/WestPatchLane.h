@@ -14,12 +14,16 @@ struct WestPatchLane
     float frequency = 440.0f;
 
     void reset()
-        {
-            carrierOsc.reset();
-            modOsc.reset();
-            lpg.reset();
-        }
+            {
+                carrierOsc.reset();
+                modOsc.reset();
+                lpg.reset();
+            }
 
+        void resetDSPState()
+            {
+                lpg.reset();
+            }
     void prepare (double sampleRate);
 
     float renderComplex (float carrierFrequencyHz,

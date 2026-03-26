@@ -171,7 +171,11 @@ private:
     };
 
     static constexpr int handoffDebugSamples = 64;
-        HandoffDebugState handoffDebug;
+    HandoffDebugState handoffDebug;
+    int preHandoffDebugCount = 0;
+    int fullBlockDebugCount = 0;
+        std::array<float, 10> preHandoffRingBuffer {};
+        int preHandoffRingIndex = 0;
 
         //==============================================================================
         // Crossfade state for handoff click suppression

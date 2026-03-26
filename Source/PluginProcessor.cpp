@@ -262,36 +262,49 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 {
     const int groupIndex = juce::jlimit (0, getNumGroups() - 1, findGroupForNoteOn());
     auto& group = groups[groupIndex];
-
+    
     const bool stealingActiveGroup = group.gate;
     const bool reusingReleasingGroup =
-        ! group.gate && groupEnvelopeManager.isEnvelopeActive (groupIndex);
-
+    ! group.gate && groupEnvelopeManager.isEnvelopeActive (groupIndex);
+    
     const bool sameGroupHandoff = stealingActiveGroup || reusingReleasingGroup;
-
+    
     if (sameGroupHandoff)
+    {
+        if (reusingReleasingGroup || stealingActiveGroup)
         {
-            if (reusingReleasingGroup || stealingActiveGroup)
+            auto& cf = crossfades[groupIndex];
+            float cacheSum = 0.0f;
+            for (int i = 0; i < numLanes; ++i) cacheSum += laneOutputCache[i] * std::sqrt(0.5f * (1.0f - juce::jlimit(-1.0f, 1.0f, lanePanBase[i] * stereoSpread)));
+            DBG ("PRE-HANDOFF lastCache[0]=" + juce::String (laneOutputCache[0]) + " cacheSum=" + juce::String (cacheSum));
+                        for (int i = 0; i < 10; ++i)
                         {
-                            auto& cf = crossfades[groupIndex];
-                            cf.active = true;
-                            DBG ("CROSSFADE START steal=" + juce::String (stealingActiveGroup ? 1 : 0)
-                                 + " oldSignal[0]=" + juce::String (cf.oldSignal[0]));
-                            cf.samplesRemaining = crossfadeSamples;
-                            for (int i = 0; i < numLanes; ++i)
-                                cf.oldSignal[i] = laneOutputCache[i];
+                            int idx = (preHandoffRingIndex - 10 + i) % 10;
+                            DBG ("RING i=" + juce::String (i) + " outL=" + juce::String (preHandoffRingBuffer[idx]));
+                        }
+                        cf.active = true;                            preHandoffDebugCount = 5;
+                            fullBlockDebugCount = 256;
+            cf.samplesRemaining = crossfadeSamples;
+            for (int i = 0; i < numLanes; ++i)
+                        {
+                            cf.oldSignal[i] = laneOutputCache[i];
+                            lanes[i].resetDSPState();
                         }
 
-            handoffDebug.active = true;
+            DBG ("CROSSFADE START steal=" + juce::String (stealingActiveGroup ? 1 : 0)
+                            + " oldSignal[0]=" + juce::String (cf.oldSignal[0]));
+        }
+        
+        handoffDebug.active = true;
         handoffDebug.groupIndex = groupIndex;
         handoffDebug.samplesRemaining = handoffDebugSamples;
         handoffDebug.sampleCounter = 0;
         handoffDebug.oldFrequencyHz = group.frequencyHz;
         handoffDebug.newFrequencyHz =
-            static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+        static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
         handoffDebug.oldGate = group.gate;
         handoffDebug.oldEnvActive = groupEnvelopeManager.isEnvelopeActive (groupIndex);
-
+        
         DBG ("HANDOFF start"
              + juce::String (" group=") + juce::String (groupIndex)
              + " oldGate=" + juce::String (handoffDebug.oldGate ? 1 : 0)
@@ -299,16 +312,16 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
              + " oldFreq=" + juce::String (handoffDebug.oldFrequencyHz)
              + " newFreq=" + juce::String (handoffDebug.newFrequencyHz));
     }
-
+    
     group.gate = true;
-            group.midiNote = midiNoteNumber;
-            group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
-            groupAllocationSerial[groupIndex] = nextAllocationSerial++;
-
-            if (stealingActiveGroup)
-                groupEnvelopeManager.forceNoteOn (groupIndex);
-            else
-                groupEnvelopeManager.noteOn (groupIndex);
+    group.midiNote = midiNoteNumber;
+    group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+    groupAllocationSerial[groupIndex] = nextAllocationSerial++;
+    
+    if (stealingActiveGroup || reusingReleasingGroup)
+        groupEnvelopeManager.forceNoteOn (groupIndex);
+    else
+        groupEnvelopeManager.noteOn (groupIndex);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -427,7 +440,16 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         renderSample (inputSample, outL, outR);
 
-        left[sample] = outL;
+        preHandoffRingBuffer[preHandoffRingIndex % 10] = outL;
+                ++preHandoffRingIndex;
+                
+                if (fullBlockDebugCount > 0)
+                {
+                    DBG ("BLOCK sample=" + juce::String (sample) + " sumL=" + juce::String (outL));
+                    --fullBlockDebugCount;
+                }
+                
+                left[sample] = outL;
 
         if (right != nullptr)
             right[sample] = outR;
@@ -634,8 +656,15 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         }
     }
     
-    outL = sumL * outputLevel;
-    outR = sumR * outputLevel;
+    if (preHandoffDebugCount > 0)
+        {
+            DBG ("PRE-HANDOFF sumL=" + juce::String (sumL));
+            --preHandoffDebugCount;
+        }
+        
+        if (handoffDebug.active)
+                DBG ("RENDERSAMPLE sumL=" + juce::String (sumL));        outL = sumL * outputLevel;
+        outR = sumR * outputLevel;
 }
 
 //==============================================================================
