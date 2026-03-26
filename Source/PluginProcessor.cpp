@@ -524,9 +524,15 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     float groupEnvValues[maxGroups] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     for (int g = 0; g < getNumGroups(); ++g)
+
     {
-        groupEnvValues[g] =
-            juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
+
+     groupEnvValues[g] =
+
+     juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
+
+     lastRenderedGroupEnv[g] = groupEnvValues[g];
+
     }
     
     float debugGroupPreAmp = 0.0f;
