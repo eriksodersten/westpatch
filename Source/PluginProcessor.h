@@ -196,7 +196,7 @@ private:
     GroupCrossfadeState crossfades[maxGroups];
 
     // Separate dying tail path for handoff.
-    // This stores a short output-domain tail buffer, not a frozen lane snapshot.
+    // Old lane DSP state dies here independently from the live group.
 
     static constexpr int tailReleaseSamples = 64;
 
@@ -207,14 +207,17 @@ private:
      bool active = false;
 
      int samplesRemaining = 0;
-     std::array<float, tailReleaseSamples> left {};
-     std::array<float, tailReleaseSamples> right {};
+     float frequencyHz = 440.0f;
+     float gain = 0.0f;
+     float gainStep = 0.0f;
+     WestPatchLane lanes[numLanes];
 
     };
 
     GroupTailState tails[maxGroups];
 
     float laneOutputCache[numLanes] = {};
+    float lastRenderedGroupEnv[maxGroups] = {};
     
     
     //==============================================================================
