@@ -286,10 +286,12 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
                             fullBlockDebugCount = 256;
             cf.samplesRemaining = crossfadeSamples;
             for (int i = 0; i < numLanes; ++i)
-                        {
-                            cf.oldSignal[i] = laneOutputCache[i];
-                            lanes[i].resetDSPState();
-                        }
+
+            {
+
+             cf.oldSignal[i] = laneOutputCache[i];
+
+            }
 
             DBG ("CROSSFADE START steal=" + juce::String (stealingActiveGroup ? 1 : 0)
                             + " oldSignal[0]=" + juce::String (cf.oldSignal[0]));
