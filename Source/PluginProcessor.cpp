@@ -173,29 +173,17 @@ void WestPatchAudioProcessor::setGroupMode (GroupMode newMode) noexcept
 
 int WestPatchAudioProcessor::getActiveGroupCount() const noexcept
 {
-    return getNumGroups();
+    return newEngine.getActiveGroupCount();
 }
 
 int WestPatchAudioProcessor::laneToGroup (int laneIndex) const noexcept
 {
-    switch (groupMode)
-    {
-        case GroupMode::Mono: return 0;
-        case GroupMode::Duo:  return laneIndex < 2 ? 0 : 1;
-        case GroupMode::Quad: return juce::jlimit (0, maxGroups - 1, laneIndex);
-        default:              return 0;
-    }
+    return newEngine.getLaneGroupIndex (laneIndex);
 }
 
 int WestPatchAudioProcessor::getNumGroups() const noexcept
 {
-    switch (groupMode)
-    {
-        case GroupMode::Mono: return 1;
-        case GroupMode::Duo:  return 2;
-        case GroupMode::Quad: return 4;
-        default:              return 1;
-    }
+    return newEngine.getActiveGroupCount();
 }
 
 int WestPatchAudioProcessor::findGroupForNoteOn() const noexcept
