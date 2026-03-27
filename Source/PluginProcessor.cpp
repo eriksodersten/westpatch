@@ -350,11 +350,13 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     group.midiNote = midiNoteNumber;
     group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
     groupAllocationSerial[groupIndex] = nextAllocationSerial++;
-    
+
     if (stealingActiveGroup || reusingReleasingGroup)
         groupEnvelopeManager.forceNoteOn (groupIndex);
     else
         groupEnvelopeManager.noteOn (groupIndex);
+
+    (void) newEngine.beginNoteOn (midiNoteNumber, group.frequencyHz);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -373,8 +375,8 @@ void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
     // Keep allocation serial during release so allocator can rank
     // releasing groups deterministically.
     groupEnvelopeManager.noteOff (groupIndex);
+    (void) newEngine.beginNoteOff (midiNoteNumber);
 }
-
 //==============================================================================
 bool WestPatchAudioProcessor::hasActiveRoutingForDestination (ModDestination destination) const
 {
@@ -562,6 +564,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
      juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
 
      lastRenderedGroupEnv[g] = groupEnvValues[g];
+     (void) newEngine.getNextEnvelopeSample (g);
 
     }
     
