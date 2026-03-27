@@ -113,8 +113,21 @@ void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
     groupEnvelopeManager.setNumGroups (getNumGroups());
     groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
 
+    newEngine.prepare (sampleRate);
+    newEngine.setAttackRelease (attackTime, releaseTime);
+
+    switch (groupMode)
+    {
+        case GroupMode::Mono: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+        case GroupMode::Duo:  newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Duo);    break;
+        case GroupMode::Quad: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Quad);   break;
+        default:              newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+    }
+
     previous266PulseHigh = false;
     resetGroups();
+    newEngine.reset();
+    newEngine.setAttackRelease (attackTime, releaseTime);
 }
 
 void WestPatchAudioProcessor::releaseResources()
@@ -139,7 +152,6 @@ bool WestPatchAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts
 }
 #endif
 
-//==============================================================================
 void WestPatchAudioProcessor::setGroupMode (GroupMode newMode) noexcept
 {
     if (groupMode == newMode)
@@ -147,6 +159,15 @@ void WestPatchAudioProcessor::setGroupMode (GroupMode newMode) noexcept
 
     groupMode = newMode;
     groupEnvelopeManager.setNumGroups (getNumGroups());
+
+    switch (groupMode)
+    {
+        case GroupMode::Mono: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+        case GroupMode::Duo:  newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Duo);    break;
+        case GroupMode::Quad: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Quad);   break;
+        default:              newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+    }
+
     resetGroups();
 }
 
