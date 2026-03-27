@@ -45,7 +45,7 @@ private:
     juce::Label funcBDepthLabel;
     juce::Slider funcBDepthSlider;
 
-    juce::ToggleButton funcBCycleButton;
+    juce::ComboBox func281ModeBox;
 
     //==========================================================================
     // 266

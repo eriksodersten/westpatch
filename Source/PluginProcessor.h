@@ -107,7 +107,7 @@ public:
     float modDepth = 2.5f;
     float funcBRate = 2.0f;
     float funcBDepth = 20.0f;
-    bool funcBCycle = false;
+    FunctionGenerator281::Mode func281Mode = FunctionGenerator281::Mode::Transient;
 
     // Global 266
     float uncertaintyRate = 0.0f;

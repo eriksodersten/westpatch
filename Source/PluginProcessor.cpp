@@ -107,8 +107,8 @@ void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
     noiseSource.prepare (sampleRate);
 
     functionGenerator281.prepare (sampleRate);
-    functionGenerator281.reset();
-    functionGenerator281.setCycle (funcBCycle);
+        functionGenerator281.reset();
+        functionGenerator281.setMode (func281Mode);
 
     uncertainty266.prepare (sampleRate);
     uncertainty266.reset();
@@ -431,7 +431,7 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     groupEnvelopeManager.setNumGroups (getNumGroups());
     groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
         newEngine.setAttackRelease (attackTime, releaseTime);
-        functionGenerator281.setCycle (funcBCycle);
+    functionGenerator281.setMode (func281Mode);
 
     // Preserve incoming MIDI for sample-offset processing,
     // while clearing the outgoing MIDI buffer immediately.
@@ -443,12 +443,14 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (msg.isNoteOn())
         {
             noteOnToGroup (msg.getNoteNumber());
-            functionGenerator281.trigger(); // remains global
+            functionGenerator281.trigger();
+                        functionGenerator281.gate (true);
         }
         else if (msg.isNoteOff())
-        {
-            noteOffFromGroups (msg.getNoteNumber());
-        }
+                {
+                    noteOffFromGroups (msg.getNoteNumber());
+                    functionGenerator281.gate (false);
+                }
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
             resetGroups();
@@ -826,7 +828,7 @@ void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     stream.writeFloat (modDepth);
     stream.writeFloat (funcBRate);
     stream.writeFloat (funcBDepth);
-    stream.writeBool (funcBCycle);
+    stream.writeBool (false);
 
     stream.writeFloat (uncertaintyRate);
     stream.writeFloat (uncertaintySmoothDepth);
@@ -870,7 +872,7 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
     modDepth = stream.readFloat();
     funcBRate = stream.readFloat();
     funcBDepth = stream.readFloat();
-    funcBCycle = stream.readBool();
+    stream.readBool(); // legacy placeholder
 
     uncertaintyRate = stream.readFloat();
     uncertaintySmoothDepth = stream.readFloat();

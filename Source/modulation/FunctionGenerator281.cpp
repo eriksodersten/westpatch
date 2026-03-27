@@ -1,5 +1,4 @@
 #include "FunctionGenerator281.h"
-
 #include <JuceHeader.h>
 
 void FunctionGenerator281::prepare (double newSampleRate) noexcept
@@ -10,15 +9,20 @@ void FunctionGenerator281::prepare (double newSampleRate) noexcept
 
 void FunctionGenerator281::reset() noexcept
 {
-    stage = Stage::Idle;
-    value = 0.0f;
+    stage         = Stage::Idle;
+    value         = 0.0f;
+    attackRate    = 0.0f;
+    decayRate     = 0.0f;
+    cachedAttack  = -1.0f;
+    cachedDecay   = -1.0f;
+    gateHigh      = false;
     pendingTrigger = false;
-    cycleMemory = 0.0f;
+    endPulse      = false;
 }
 
-void FunctionGenerator281::setCycle (bool shouldCycle) noexcept
+void FunctionGenerator281::setMode (Mode newMode) noexcept
 {
-    cycle = shouldCycle;
+    mode = newMode;
 }
 
 void FunctionGenerator281::trigger() noexcept
@@ -26,26 +30,46 @@ void FunctionGenerator281::trigger() noexcept
     pendingTrigger = true;
 }
 
+void FunctionGenerator281::gate (bool high) noexcept
+{
+    gateHigh = high;
+}
+
+bool FunctionGenerator281::getEndPulse() const noexcept
+{
+    return endPulse;
+}
+
 void FunctionGenerator281::enterAttack() noexcept
 {
     stage = Stage::Attack;
-
-    // Minimal history dependence:
-    // täta cykler/retriggers ger lite "spänst", men utan slump.
-    cycleMemory = 0.98f * cycleMemory + 0.02f * value;
 }
 
 void FunctionGenerator281::enterDecay() noexcept
 {
     stage = Stage::Decay;
-
-    // Peak-nivån påverkar nästa cykel mycket subtilt.
-    cycleMemory = 0.995f * cycleMemory + 0.005f * value;
 }
 
 float FunctionGenerator281::process (float attackTimeSeconds,
                                      float decayTimeSeconds) noexcept
 {
+    // Cacha rate-beräkning – bara när parametrar ändras
+    const float sr = (float) sampleRate;
+
+    if (attackTimeSeconds != cachedAttack)
+    {
+        cachedAttack = attackTimeSeconds;
+        attackRate   = 1.0f / juce::jmax (1.0f, attackTimeSeconds * sr);
+    }
+
+    if (decayTimeSeconds != cachedDecay)
+    {
+        cachedDecay = decayTimeSeconds;
+        decayRate   = 1.0f / juce::jmax (1.0f, decayTimeSeconds * sr);
+    }
+
+    endPulse = false;
+
     if (pendingTrigger)
     {
         enterAttack();
@@ -55,54 +79,52 @@ float FunctionGenerator281::process (float attackTimeSeconds,
     switch (stage)
     {
         case Stage::Idle:
-        {
-            // Långsam återgång mot neutral state
-            cycleMemory *= 0.9995f;
+            value = 0.0f;
             break;
-        }
 
         case Stage::Attack:
-        {
-            // Mycket liten state-beroende asymmetri, inte random
-            const float attackSkew = 1.0f - (cycleMemory * 0.015f);
+            value += attackRate;
 
-            const float coeff =
-                1.0f / juce::jmax (1.0f,
-                                   attackTimeSeconds * attackSkew * (float) sampleRate);
-
-            value += (1.0f - value) * coeff;
-
-            if (value >= 0.999f)
+            if (value >= 1.0f)
             {
                 value = 1.0f;
-                enterDecay();
-            }
 
+                switch (mode)
+                {
+                    case Mode::Transient: enterDecay();          break;
+                    case Mode::Sustain:   stage = Stage::Sustain; break;
+                    case Mode::Cycle:     enterDecay();          break;
+                }
+            }
             break;
-        }
+
+        case Stage::Sustain:
+            value = 1.0f;
+            if (! gateHigh)
+                enterDecay();
+            break;
 
         case Stage::Decay:
-        {
-            const float decaySkew = 1.0f + (cycleMemory * 0.02f);
+            value -= decayRate;
 
-            const float coeff =
-                1.0f / juce::jmax (1.0f,
-                                   decayTimeSeconds * decaySkew * (float) sampleRate);
-
-            value += (0.0f - value) * coeff;
-
-            if (value <= 0.0005f)
+            if (value <= 0.0f)
             {
-                value = 0.0f;
+                value    = 0.0f;
+                endPulse = true;
 
-                if (cycle)
-                    enterAttack();
-                else
-                    stage = Stage::Idle;
+                switch (mode)
+                {
+                    case Mode::Transient:
+                    case Mode::Sustain:
+                        stage = Stage::Idle;
+                        break;
+
+                    case Mode::Cycle:
+                        enterAttack();
+                        break;
+                }
             }
-
             break;
-        }
     }
 
     return value;

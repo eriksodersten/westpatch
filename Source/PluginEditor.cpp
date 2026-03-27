@@ -88,10 +88,30 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     funcBDepthSlider.onValueChange = [this] { audioProcessor.funcBDepth = (float) funcBDepthSlider.getValue(); };
     addAndMakeVisible (funcBDepthSlider);
 
-    funcBCycleButton.setButtonText ("281 Cycle");
-    funcBCycleButton.setToggleState (audioProcessor.funcBCycle, juce::dontSendNotification);
-    funcBCycleButton.onClick = [this] { audioProcessor.funcBCycle = funcBCycleButton.getToggleState(); };
-    addAndMakeVisible (funcBCycleButton);
+    func281ModeBox.addItem ("Transient", 1);
+        func281ModeBox.addItem ("Sustain",   2);
+        func281ModeBox.addItem ("Cycle",     3);
+
+        switch (audioProcessor.func281Mode)
+        {
+            case FunctionGenerator281::Mode::Transient: func281ModeBox.setSelectedId (1, juce::dontSendNotification); break;
+            case FunctionGenerator281::Mode::Sustain:   func281ModeBox.setSelectedId (2, juce::dontSendNotification); break;
+            case FunctionGenerator281::Mode::Cycle:     func281ModeBox.setSelectedId (3, juce::dontSendNotification); break;
+            default:                                    func281ModeBox.setSelectedId (1, juce::dontSendNotification); break;
+        }
+
+        func281ModeBox.onChange = [this]
+        {
+            switch (func281ModeBox.getSelectedId())
+            {
+                case 1: audioProcessor.func281Mode = FunctionGenerator281::Mode::Transient; break;
+                case 2: audioProcessor.func281Mode = FunctionGenerator281::Mode::Sustain;   break;
+                case 3: audioProcessor.func281Mode = FunctionGenerator281::Mode::Cycle;     break;
+                default: break;
+            }
+            
+        };
+        addAndMakeVisible (func281ModeBox);
 
     //==========================================================================
     // 266
@@ -481,7 +501,7 @@ void WestPatchAudioProcessorEditor::resized()
     funcBDepthLabel.setBounds  (mod281X + 96, 160, knobW, 20);
     funcBDepthSlider.setBounds (mod281X + 96, 180, knobW, knobH);
 
-    funcBCycleButton.setBounds (mod281X + 8, 312, 160, 24);
+    func281ModeBox.setBounds (mod281X + 8, 312, 160, 24);
 
     // 266 panel
     const int mod266X = 736;
