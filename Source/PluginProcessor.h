@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include "core/GroupVoiceEngine.h"
 #include "core/WestPatchGroupState.h"
 #include "core/SignalBus.h"
 #include "GroupEnvelopeManager.h"
@@ -226,6 +227,8 @@ private:
     //==============================================================================
     // Always 4 lanes
     WestPatchLane lanes[numLanes];
+
+    westpatch::engine::GroupVoiceEngine newEngine;
 
     // 1/2/4 logical groups depending on mode
     WestPatchGroupState groups[maxGroups];
