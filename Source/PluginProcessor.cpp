@@ -96,6 +96,8 @@ void WestPatchAudioProcessor::changeProgramName (int, const juce::String&)
 void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     currentSampleRate = sampleRate;
+    foldAmountSmoothed.reset(sampleRate, 0.02);
+    foldAmountSmoothed.setCurrentAndTargetValue(foldAmount);
 
     for (auto& lane : lanes)
         lane.prepare (sampleRate);
@@ -506,6 +508,7 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
 void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept
 {
+    foldAmountSmoothed.setTargetValue(foldAmount);
     SignalBus bus;
 
     // 281 stays global
@@ -626,7 +629,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 complexFmAmount,
                 complexOscMix,
                 synthLevel,
-                juce::jmax (0.0f, foldAmount + tail.foldModAmount),
+                juce::jmax (0.0f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
                 laneLpgCutoffEnv,
                 laneLpgOutputEnv,
                 lpgAmount,
@@ -657,7 +660,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
         const float laneFreqHz = baseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
 
-        const float foldValue = juce::jmax (0.0f, foldAmount + foldModAmount);
+        const float foldValue = juce::jmax (0.0f, foldAmountSmoothed.getNextValue() + foldModAmount);
         const float noiseIn = noiseSource.process() * noiseLevel;
 
         float toneModeBase = 1.0f;
