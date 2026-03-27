@@ -21,6 +21,13 @@ enum class ActiveGroupMode
     Quad = 4
 };
 
+enum class NoteOnAction
+{
+    StartIdleGroup,
+    ReuseReleasingGroup,
+    StealActiveGroup
+};
+
 struct GlobalModSnapshot
 {
     float pitchModSemitones = 0.0f;
@@ -32,6 +39,7 @@ struct GroupVoiceState
 {
     bool active = false;
     bool gate = false;
+    bool envelopeActive = false;
     int midiNote = -1;
     float frequencyHz = 440.0f;
     std::uint64_t allocationSerial = 0;
@@ -48,6 +56,12 @@ struct TailVoiceState
     float gainStep = 0.0f;
     GlobalModSnapshot mod {};
     std::array<WestPatchLane, kNumLanesPerGroup> lanes {};
+};
+
+struct NoteOnDecision
+{
+    int groupIndex = 0;
+    NoteOnAction action = NoteOnAction::StartIdleGroup;
 };
 
 class GroupVoiceEngine
@@ -104,6 +118,77 @@ public:
     const TailVoiceState& tail (int index) const noexcept
     {
         return tails_[static_cast<std::size_t> (index)];
+    }
+
+    NoteOnDecision findGroupForNoteOn() const noexcept
+    {
+        const int numGroups = activeGroupCount_;
+
+        for (int g = 0; g < numGroups; ++g)
+        {
+            const auto& voice = groups_[static_cast<std::size_t> (g)];
+
+            if (! voice.gate && ! voice.envelopeActive)
+                return { g, NoteOnAction::StartIdleGroup };
+        }
+
+        int oldestReleasingGroup = -1;
+        std::uint64_t oldestReleasingSerial = 0;
+
+        for (int g = 0; g < numGroups; ++g)
+        {
+            const auto& voice = groups_[static_cast<std::size_t> (g)];
+
+            if (! voice.gate && voice.envelopeActive)
+            {
+                if (oldestReleasingGroup < 0 || voice.allocationSerial < oldestReleasingSerial)
+                {
+                    oldestReleasingGroup = g;
+                    oldestReleasingSerial = voice.allocationSerial;
+                }
+            }
+        }
+
+        if (oldestReleasingGroup >= 0)
+            return { oldestReleasingGroup, NoteOnAction::ReuseReleasingGroup };
+
+        int oldestActiveGroup = 0;
+        std::uint64_t oldestActiveSerial = groups_[0].allocationSerial;
+
+        for (int g = 1; g < numGroups; ++g)
+        {
+            const auto& voice = groups_[static_cast<std::size_t> (g)];
+
+            if (voice.allocationSerial < oldestActiveSerial)
+            {
+                oldestActiveSerial = voice.allocationSerial;
+                oldestActiveGroup = g;
+            }
+        }
+
+        return { oldestActiveGroup, NoteOnAction::StealActiveGroup };
+    }
+
+    int findGroupForNoteOff (int midiNoteNumber) const noexcept
+    {
+        int bestGroup = -1;
+        std::uint64_t newestSerial = 0;
+
+        for (int g = 0; g < activeGroupCount_; ++g)
+        {
+            const auto& voice = groups_[static_cast<std::size_t> (g)];
+
+            if (voice.gate && voice.midiNote == midiNoteNumber)
+            {
+                if (bestGroup < 0 || voice.allocationSerial > newestSerial)
+                {
+                    bestGroup = g;
+                    newestSerial = voice.allocationSerial;
+                }
+            }
+        }
+
+        return bestGroup;
     }
 
 private:
