@@ -266,18 +266,26 @@ void WestPatchAudioProcessor::resetGroups() noexcept
 
     nextAllocationSerial = 1;
     groupEnvelopeManager.reset();
+    newEngine.reset();
+
+    switch (groupMode)
+    {
+        case GroupMode::Mono: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+        case GroupMode::Duo:  newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Duo);    break;
+        case GroupMode::Quad: newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Quad);   break;
+        default:              newEngine.setActiveGroupMode (westpatch::engine::ActiveGroupMode::Unison); break;
+    }
+
+    newEngine.setAttackRelease (attackTime, releaseTime);
 
     for (int g = 0; g < maxGroups; ++g)
-
-    crossfades[g] = {};
+        crossfades[g] = {};
 
     for (int g = 0; g < maxGroups; ++g)
-
-    tails[g] = {};
+        tails[g] = {};
 
     for (int i = 0; i < numLanes; ++i)
-
-    laneOutputCache[i] = 0.0f;
+        laneOutputCache[i] = 0.0f;
 }
 
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
