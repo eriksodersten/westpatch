@@ -54,6 +54,7 @@ struct TailVoiceState
     float frequencyHz = 440.0f;
     float gain = 0.0f;
     float gainStep = 0.0f;
+    std::uint64_t sourceAllocationSerial = 0;
     GlobalModSnapshot mod {};
     std::array<WestPatchLane, kNumLanesPerGroup> lanes {};
 };
@@ -270,7 +271,81 @@ public:
             voice.active = false;
     }
 
+    int startTailFromGroupState (const GroupVoiceState& sourceGroup,
+                                 int sourceGroupIndex,
+                                 float startGain,
+                                 const GlobalModSnapshot& mod,
+                                 int releaseSamples = kDefaultTailReleaseSamples) noexcept
+    {
+        if (releaseSamples <= 0 || startGain <= 0.0f)
+            return -1;
+
+        const int tailIndex = findTailSlotForHandoff();
+        auto& tailVoice = tails_[static_cast<std::size_t> (tailIndex)];
+
+        tailVoice = {};
+        tailVoice.active = true;
+        tailVoice.sourceGroupIndex = sourceGroupIndex;
+        tailVoice.samplesRemaining = releaseSamples;
+        tailVoice.frequencyHz = sourceGroup.frequencyHz;
+        tailVoice.gain = startGain;
+        tailVoice.gainStep = startGain / static_cast<float> (releaseSamples);
+        tailVoice.sourceAllocationSerial = sourceGroup.allocationSerial;
+        tailVoice.mod = mod;
+        tailVoice.lanes = sourceGroup.lanes;
+
+        return tailIndex;
+    }
+
+    void advanceTail (int tailIndex) noexcept
+    {
+        auto& tailVoice = tails_[static_cast<std::size_t> (tailIndex)];
+
+        if (! tailVoice.active)
+            return;
+
+        tailVoice.gain -= tailVoice.gainStep;
+        if (tailVoice.gain < 0.0f)
+            tailVoice.gain = 0.0f;
+
+        --tailVoice.samplesRemaining;
+
+        if (tailVoice.samplesRemaining <= 0 || tailVoice.gain <= 0.0f)
+            tailVoice = {};
+    }
+
+    void advanceAllTails() noexcept
+    {
+        for (int i = 0; i < kMaxTailVoices; ++i)
+            advanceTail (i);
+    }
+
 private:
+    int findTailSlotForHandoff() const noexcept
+    {
+        for (int i = 0; i < kMaxTailVoices; ++i)
+        {
+            if (! tails_[static_cast<std::size_t> (i)].active)
+                return i;
+        }
+
+        int oldestTailIndex = 0;
+        std::uint64_t oldestSerial = tails_[0].sourceAllocationSerial;
+
+        for (int i = 1; i < kMaxTailVoices; ++i)
+        {
+            const auto& tailVoice = tails_[static_cast<std::size_t> (i)];
+
+            if (tailVoice.sourceAllocationSerial < oldestSerial)
+            {
+                oldestSerial = tailVoice.sourceAllocationSerial;
+                oldestTailIndex = i;
+            }
+        }
+
+        return oldestTailIndex;
+    }
+
     ActiveGroupMode activeGroupMode_ = ActiveGroupMode::Unison;
     std::uint64_t nextAllocationSerial_ = 1;
     std::array<GroupVoiceState, kMaxGroupVoices> groups_ {};
