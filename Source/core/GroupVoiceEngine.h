@@ -69,7 +69,7 @@ class GroupVoiceEngine
 public:
     void reset() noexcept
     {
-        activeGroupCount_ = 1;
+        activeGroupMode_ = ActiveGroupMode::Unison;
         nextAllocationSerial_ = 1;
 
         for (auto& group : groups_)
@@ -79,20 +79,47 @@ public:
             tail = {};
     }
 
-    void setActiveGroupCount (int count) noexcept
+    void setActiveGroupMode (ActiveGroupMode mode) noexcept
     {
-        if (count < 1)
-            count = 1;
+        activeGroupMode_ = mode;
+    }
 
-        if (count > kMaxGroupVoices)
-            count = kMaxGroupVoices;
-
-        activeGroupCount_ = count;
+    ActiveGroupMode getActiveGroupMode() const noexcept
+    {
+        return activeGroupMode_;
     }
 
     int getActiveGroupCount() const noexcept
     {
-        return activeGroupCount_;
+        switch (activeGroupMode_)
+        {
+            case ActiveGroupMode::Unison: return 1;
+            case ActiveGroupMode::Duo:    return 2;
+            case ActiveGroupMode::Quad:   return 4;
+            default:                      return 1;
+        }
+    }
+
+    int getLaneGroupIndex (int laneIndex) const noexcept
+    {
+        switch (activeGroupMode_)
+        {
+            case ActiveGroupMode::Unison:
+                return 0;
+
+            case ActiveGroupMode::Duo:
+                return laneIndex < 2 ? 0 : 1;
+
+            case ActiveGroupMode::Quad:
+                if (laneIndex < 0)
+                    return 0;
+                if (laneIndex > 3)
+                    return 3;
+                return laneIndex;
+
+            default:
+                return 0;
+        }
     }
 
     std::uint64_t claimAllocationSerial() noexcept
@@ -122,7 +149,7 @@ public:
 
     NoteOnDecision findGroupForNoteOn() const noexcept
     {
-        const int numGroups = activeGroupCount_;
+        const int numGroups = getActiveGroupCount();
 
         for (int g = 0; g < numGroups; ++g)
         {
@@ -174,7 +201,7 @@ public:
         int bestGroup = -1;
         std::uint64_t newestSerial = 0;
 
-        for (int g = 0; g < activeGroupCount_; ++g)
+        for (int g = 0; g < getActiveGroupCount(); ++g)
         {
             const auto& voice = groups_[static_cast<std::size_t> (g)];
 
@@ -192,7 +219,7 @@ public:
     }
 
 private:
-    int activeGroupCount_ = 1;
+    ActiveGroupMode activeGroupMode_ = ActiveGroupMode::Unison;
     std::uint64_t nextAllocationSerial_ = 1;
     std::array<GroupVoiceState, kMaxGroupVoices> groups_ {};
     std::array<TailVoiceState, kMaxTailVoices> tails_ {};
