@@ -110,7 +110,7 @@ public:
     bool funcBCycle = false;
 
     // Global 266
-    float uncertaintyRate = 1.2f;
+    float uncertaintyRate = 0.0f;
     float uncertaintySmoothDepth = 0.8f;
     float uncertaintySteppedDepth = 8.0f;
 
@@ -127,7 +127,7 @@ public:
     float test266PulseToTrigger = 0.0f;
 
     // Lane spread / complex oscillator
-    float detuneAmount = 0.35f;
+    float detuneAmount = 0.0f;
     float stereoSpread = 0.60f;
     float complexModRatio = 2.0f;
     float complexFmAmount = 30.0f;

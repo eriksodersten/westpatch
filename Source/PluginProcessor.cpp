@@ -629,7 +629,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 complexFmAmount,
                 complexOscMix,
                 synthLevel,
-                juce::jmax (0.0f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
+                juce::jmax (0.01f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
                 laneLpgCutoffEnv,
                 laneLpgOutputEnv,
                 lpgAmount,
@@ -660,7 +660,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
         const float laneFreqHz = baseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
 
-        const float foldValue = juce::jmax (0.0f, foldAmountSmoothed.getNextValue() + foldModAmount);
+        const float foldValue = juce::jmax (0.01f, foldAmountSmoothed.getNextValue() + foldModAmount);
         const float noiseIn = noiseSource.process() * noiseLevel;
 
         float toneModeBase = 1.0f;
