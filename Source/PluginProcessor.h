@@ -155,6 +155,7 @@ private:
     static constexpr int numLanes = 4;
     static constexpr int maxGroups = 4;
     juce::SmoothedValue<float> foldAmountSmoothed;
+        juce::SmoothedValue<float> lpgAmountSmoothed;
     // Serial counters for group allocation ordering
     std::uint64_t groupAllocationSerial[maxGroups] = {};
     std::uint64_t nextAllocationSerial = 1;

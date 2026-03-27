@@ -1,16 +1,22 @@
 #include "LowPassGate.h"
-
+#include <cmath>
 #include <algorithm>
 
 void LowPassGate::prepare (double newSampleRate) noexcept
 {
     sampleRate = newSampleRate;
+
+    attackCoeff  = 1.0f - std::exp (-1.0f / (0.012f * (float) sampleRate));
+    releaseCoeff = 1.0f - std::exp (-1.0f / (0.250f * (float) sampleRate));
+
     reset();
 }
 
 void LowPassGate::reset() noexcept
 {
-    state = 0.0f;
+    vacState = 0.0f;
+    s1       = 0.0f;
+    s2       = 0.0f;
 }
 
 float LowPassGate::process (float input,
@@ -19,10 +25,31 @@ float LowPassGate::process (float input,
                             float amount,
                             float cv) noexcept
 {
-    float cutoff = 0.001f + (cutoffEnvelope * amount) + cv;
-    cutoff = std::clamp (cutoff, 0.001f, 1.0f);
+    // --- Vactrol-state ---
+    const float target = std::clamp (cutoffEnvelope + cv, 0.0f, 1.0f);
+    const float coeff  = target > vacState ? attackCoeff : releaseCoeff;
+    vacState = vacState + coeff * (target - vacState);
 
-    state += cutoff * (input - state);
+    // --- Cutoff: exponentiell ur vacState ---
+    // Clampad till 49% av Nyquist så tan() aldrig exploderar
+    const float maxCutoff = 0.49f * (float) sampleRate;
+    const float cutoffHz  = std::clamp (30.0f * std::exp (vacState * amount * std::log (333.0f)),
+                                        20.0f, maxCutoff);
 
-    return state * outputEnvelope;
+    // --- TPT SVF ---
+    const float q  = 0.5f + amount * 0.6f;
+    const float k  = 1.0f / q;
+    const float g  = std::tan (3.14159265f * cutoffHz / (float) sampleRate);
+    const float a1 = 1.0f / (1.0f + g * (g + k));
+    const float a2 = g * a1;
+    const float a3 = g * a2;
+
+    const float v3 = input - s2;
+    const float v1 = a1 * s1 + a2 * v3;
+    const float v2 = s2 + a2 * s1 + a3 * v3;
+
+    s1 = std::clamp (2.0f * v1 - s1, -4.0f, 4.0f);
+    s2 = std::clamp (2.0f * v2 - s2, -4.0f, 4.0f);
+
+    return v2 * outputEnvelope;
 }

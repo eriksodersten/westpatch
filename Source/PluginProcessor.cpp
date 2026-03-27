@@ -97,7 +97,9 @@ void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     foldAmountSmoothed.reset(sampleRate, 0.02);
-    foldAmountSmoothed.setCurrentAndTargetValue(foldAmount);
+        foldAmountSmoothed.setCurrentAndTargetValue(foldAmount);
+        lpgAmountSmoothed.reset(sampleRate, 0.02);
+        lpgAmountSmoothed.setCurrentAndTargetValue(lpgAmount);
 
     for (auto& lane : lanes)
         lane.prepare (sampleRate);
@@ -509,6 +511,7 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept
 {
     foldAmountSmoothed.setTargetValue(foldAmount);
+        lpgAmountSmoothed.setTargetValue(lpgAmount);
     SignalBus bus;
 
     // 281 stays global
@@ -632,7 +635,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 juce::jmax (0.01f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
                 laneLpgCutoffEnv,
                 laneLpgOutputEnv,
-                lpgAmount,
+                lpgAmountSmoothed.getNextValue(),
                 tail.lpgCvMod,
                 0.0f);
 
@@ -683,16 +686,10 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
 
         constexpr float groupToneCurve = 0.90f;
 
-        const float shapedGroupToneEnv =
-            std::pow (juce::jlimit (0.0f, 1.0f, groupEnv), groupToneCurve);
-
-        const float laneLpgCutoffEnv =
-            juce::jlimit (0.0f, 1.0f, shapedGroupToneEnv * toneModeBase);
-
-        // Behåll tone-mode output scaling exakt som idag.
-        // Bara cutoff/tone får den nya kurvan.
-        const float laneLpgOutputEnv = toneModeBase;
-
+        // groupEnv driver LPG-cutoff – vacState lägger till vactrol-tröghet ovanpå
+                const float laneLpgCutoffEnv = juce::jlimit (0.0f, 1.0f, groupEnv * toneModeBase);
+                const float laneLpgOutputEnv = toneModeBase;
+        
         float laneOut = lanes[laneIndex].renderComplex (
             laneFreqHz,
             complexModRatio,
@@ -702,13 +699,13 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             foldValue,
             laneLpgCutoffEnv,
             laneLpgOutputEnv,
-            lpgAmount,
+            lpgAmountSmoothed.getNextValue(),
             lpgCvMod,
             noiseIn);
 
-        const float laneOutPreAmp = laneOut;
+            const float laneOutPreAmp = laneOut;
 
-        // First group-aware route: ADSR -> amp
+            // First group-aware route: ADSR -> amp
 
         laneOut *= groupEnv;
 

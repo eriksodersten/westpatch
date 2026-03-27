@@ -13,6 +13,12 @@ public:
                    float cv) noexcept;
 
 private:
-    double sampleRate = 44100.0;
-    float state = 0.0f;
+    double sampleRate    = 44100.0;
+
+    float vacState       = 0.0f;
+    float attackCoeff    = 0.0f;
+    float releaseCoeff   = 0.0f;
+
+    float s1             = 0.0f;
+    float s2             = 0.0f;
 };
