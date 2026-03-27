@@ -290,7 +290,10 @@ void WestPatchAudioProcessor::resetGroups() noexcept
 
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 {
-    const int groupIndex = juce::jlimit (0, getNumGroups() - 1, findGroupForNoteOn());
+    const float frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+    const auto newResult = newEngine.beginNoteOn (midiNoteNumber, frequencyHz);
+
+    const int groupIndex = juce::jlimit (0, getNumGroups() - 1, newResult.decision.groupIndex);
     auto& group = groups[groupIndex];
     
     const bool stealingActiveGroup = group.gate;
@@ -348,20 +351,18 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     
     group.gate = true;
     group.midiNote = midiNoteNumber;
-    group.frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
+    group.frequencyHz = frequencyHz;
     groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
     if (stealingActiveGroup || reusingReleasingGroup)
         groupEnvelopeManager.forceNoteOn (groupIndex);
     else
         groupEnvelopeManager.noteOn (groupIndex);
-
-    (void) newEngine.beginNoteOn (midiNoteNumber, group.frequencyHz);
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
 {
-    const int groupIndex = findGroupForNoteOff (midiNoteNumber);
+    const int groupIndex = newEngine.beginNoteOff (midiNoteNumber);
 
     if (groupIndex < 0)
         return;
