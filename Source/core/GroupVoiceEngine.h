@@ -64,6 +64,13 @@ struct NoteOnDecision
     NoteOnAction action = NoteOnAction::StartIdleGroup;
 };
 
+struct NoteOnResult
+{
+    NoteOnDecision decision {};
+    GroupVoiceState previousGroupState {};
+    bool hadPreviousGroupState = false;
+};
+
 class GroupVoiceEngine
 {
 public:
@@ -216,6 +223,51 @@ public:
         }
 
         return bestGroup;
+    }
+
+    NoteOnResult beginNoteOn (int midiNoteNumber, float frequencyHz) noexcept
+    {
+        NoteOnResult result;
+        result.decision = findGroupForNoteOn();
+
+        auto& selectedGroup = groups_[static_cast<std::size_t> (result.decision.groupIndex)];
+
+        if (result.decision.action != NoteOnAction::StartIdleGroup)
+        {
+            result.previousGroupState = selectedGroup;
+            result.hadPreviousGroupState = true;
+        }
+
+        selectedGroup.active = true;
+        selectedGroup.gate = true;
+        selectedGroup.envelopeActive = true;
+        selectedGroup.midiNote = midiNoteNumber;
+        selectedGroup.frequencyHz = frequencyHz;
+        selectedGroup.allocationSerial = claimAllocationSerial();
+
+        return result;
+    }
+
+    int beginNoteOff (int midiNoteNumber) noexcept
+    {
+        const int groupIndex = findGroupForNoteOff (midiNoteNumber);
+
+        if (groupIndex < 0)
+            return -1;
+
+        auto& voice = groups_[static_cast<std::size_t> (groupIndex)];
+        voice.gate = false;
+        voice.midiNote = -1;
+        return groupIndex;
+    }
+
+    void setEnvelopeActive (int groupIndex, bool isActive) noexcept
+    {
+        auto& voice = groups_[static_cast<std::size_t> (groupIndex)];
+        voice.envelopeActive = isActive;
+
+        if (! voice.gate && ! voice.envelopeActive)
+            voice.active = false;
     }
 
 private:
