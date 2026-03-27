@@ -61,8 +61,8 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     setupLabel (foldLabel, "Fold");
     addAndMakeVisible (foldLabel);
     setupKnob (foldSlider, 0.0, 5.0, 0.01);
-    foldSlider.setValue (audioProcessor.foldAmount, juce::dontSendNotification);
-    foldSlider.onValueChange = [this] { audioProcessor.foldAmount = (float) foldSlider.getValue(); };
+        foldSlider.setValue (audioProcessor.foldAmount - 0.05, juce::dontSendNotification);
+        foldSlider.onValueChange = [this] { audioProcessor.foldAmount = (float) foldSlider.getValue() + 0.05f; };
     addAndMakeVisible (foldSlider);
 
     setupLabel (lpgLabel, "LPG");
