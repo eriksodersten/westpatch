@@ -210,6 +210,9 @@ private:
      float frequencyHz = 440.0f;
      float gain = 0.0f;
      float gainStep = 0.0f;
+     float pitchModSemitones = 0.0f;
+     float foldModAmount = 0.0f;
+     float lpgCvMod = 0.0f;
      WestPatchLane lanes[numLanes];
 
     };

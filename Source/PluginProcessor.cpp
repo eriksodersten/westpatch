@@ -3,6 +3,13 @@
 
 #include <cmath>
 
+namespace
+{
+    float s_lastRenderedPitchModSemitones = 0.0f;
+    float s_lastRenderedFoldModAmount = 0.0f;
+    float s_lastRenderedLpgCvMod = 0.0f;
+}
+
 //==============================================================================
 WestPatchAudioProcessor::WestPatchAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -286,6 +293,9 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
             tail.frequencyHz = group.frequencyHz > 0.0f ? group.frequencyHz : 440.0f;
             tail.gain = juce::jlimit (0.0f, 1.0f, lastRenderedGroupEnv[groupIndex]);
             tail.gainStep = tail.gain / static_cast<float> (tailReleaseSamples);
+            tail.pitchModSemitones = s_lastRenderedPitchModSemitones;
+                    tail.foldModAmount = s_lastRenderedFoldModAmount;
+                    tail.lpgCvMod = s_lastRenderedLpgCvMod;
 
             for (int i = 0; i < numLanes; ++i)
             {
@@ -516,6 +526,11 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                                                                     test266SteppedToPitch);
     lpgCvMod += uncertaintyOut.bias * test266BiasToLpg;
 
+    s_lastRenderedPitchModSemitones = pitchModSemitones;
+     s_lastRenderedFoldModAmount = foldModAmount;
+     s_lastRenderedLpgCvMod = lpgCvMod;
+
+    
     float sumL = 0.0f;
     float sumR = 0.0f;
     
@@ -550,7 +565,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 continue;
 
             const float detuneSemitones = laneDetuneBase[laneIndex] * detuneAmount;
-            const float lanePitchSemitones = detuneSemitones + pitchModSemitones;
+            const float lanePitchSemitones = detuneSemitones + tail.pitchModSemitones;
             const float laneFreqHz = tailBaseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
 
             float toneModeBase = 1.0f;
@@ -587,11 +602,11 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 complexFmAmount,
                 complexOscMix,
                 synthLevel,
-                juce::jmax (0.0f, foldAmount + foldModAmount),
+                juce::jmax (0.0f, foldAmount + tail.foldModAmount),
                 laneLpgCutoffEnv,
                 laneLpgOutputEnv,
                 lpgAmount,
-                lpgCvMod,
+                tail.lpgCvMod,
                 0.0f);
 
             laneOut *= tail.gain;
