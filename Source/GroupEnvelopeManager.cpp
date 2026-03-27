@@ -53,7 +53,6 @@ void GroupEnvelopeManager::forceNoteOn(int groupIndex) noexcept
     if (!isValidGroup(groupIndex))
         return;
 
-    envelopes[groupIndex].reset();
     envelopes[groupIndex].noteOn();
     activeCounts[groupIndex] = 1;
 }

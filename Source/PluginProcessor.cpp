@@ -292,13 +292,20 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 {
     const float frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
     const auto newResult = newEngine.beginNoteOn (midiNoteNumber, frequencyHz);
+    
 
     const int groupIndex = juce::jlimit (0, getNumGroups() - 1, newResult.decision.groupIndex);
+
+    DBG ("noteOn decision=" + juce::String((int)newResult.decision.action)
+         + " group=" + juce::String(groupIndex)
+         + " legacyEnvActive=" + juce::String(groupEnvelopeManager.isEnvelopeActive(groupIndex) ? 1 : 0)
+         + " legacyGate=" + juce::String(groups[groupIndex].gate ? 1 : 0));
     auto& group = groups[groupIndex];
     
-    const bool stealingActiveGroup = group.gate;
-    const bool reusingReleasingGroup =
-    ! group.gate && groupEnvelopeManager.isEnvelopeActive (groupIndex);
+    const bool stealingActiveGroup =
+            newResult.decision.action == westpatch::engine::NoteOnAction::StealActiveGroup;
+        const bool reusingReleasingGroup =
+            newResult.decision.action == westpatch::engine::NoteOnAction::ReuseReleasingGroup;
     
     const bool sameGroupHandoff = stealingActiveGroup || reusingReleasingGroup;
     
@@ -354,10 +361,8 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     group.frequencyHz = frequencyHz;
     groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
-    if (stealingActiveGroup || reusingReleasingGroup)
-        groupEnvelopeManager.forceNoteOn (groupIndex);
-    else
-        groupEnvelopeManager.noteOn (groupIndex);
+    // groupEnvelopeManager är inte längre source of truth för envelope.
+        // newEngine.beginNoteOn() hanterar detta internt.
 }
 
 void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
@@ -375,8 +380,7 @@ void WestPatchAudioProcessor::noteOffFromGroups (int midiNoteNumber) noexcept
     // Keep frequencyHz during release so the tail stays on pitch.
     // Keep allocation serial during release so allocator can rank
     // releasing groups deterministically.
-    groupEnvelopeManager.noteOff (groupIndex);
-    (void) newEngine.beginNoteOff (midiNoteNumber);
+    // newEngine.beginNoteOff() hanterar envelope internt.
 }
 //==============================================================================
 bool WestPatchAudioProcessor::hasActiveRoutingForDestination (ModDestination destination) const
@@ -422,7 +426,8 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     groupEnvelopeManager.setNumGroups (getNumGroups());
     groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
-    functionGenerator281.setCycle (funcBCycle);
+        newEngine.setAttackRelease (attackTime, releaseTime);
+        functionGenerator281.setCycle (funcBCycle);
 
     // Preserve incoming MIDI for sample-offset processing,
     // while clearing the outgoing MIDI buffer immediately.
@@ -916,6 +921,7 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
 
     groupEnvelopeManager.setNumGroups (getNumGroups());
     groupEnvelopeManager.setAttackRelease (attackTime, releaseTime);
+        newEngine.setAttackRelease (attackTime, releaseTime);
 }
 
 //==============================================================================
