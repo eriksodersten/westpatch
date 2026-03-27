@@ -560,12 +560,10 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
 
     {
 
-     groupEnvValues[g] =
+        groupEnvValues[g] =
+                    juce::jlimit(0.0f, 1.0f, newEngine.getNextEnvelopeSample(g));
 
-     juce::jlimit(0.0f, 1.0f, groupEnvelopeManager.getNextSample(g));
-
-     lastRenderedGroupEnv[g] = groupEnvValues[g];
-     (void) newEngine.getNextEnvelopeSample (g);
+                lastRenderedGroupEnv[g] = groupEnvValues[g];
 
     }
     
