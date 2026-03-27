@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "GroupEnvelopeManager.h"
 #include "dsp/WestPatchLane.h"
 
 namespace westpatch::engine
@@ -75,6 +76,12 @@ struct NoteOnResult
 class GroupVoiceEngine
 {
 public:
+    void prepare (double sampleRate) noexcept
+    {
+        groupEnvelopes_.prepare (sampleRate);
+        groupEnvelopes_.setNumGroups (getActiveGroupCount());
+    }
+
     void reset() noexcept
     {
         activeGroupMode_ = ActiveGroupMode::Unison;
@@ -85,11 +92,26 @@ public:
 
         for (auto& tail : tails_)
             tail = {};
+
+        groupEnvelopes_.setNumGroups (getActiveGroupCount());
+        groupEnvelopes_.reset();
     }
 
     void setActiveGroupMode (ActiveGroupMode mode) noexcept
     {
+        if (activeGroupMode_ == mode)
+            return;
+
         activeGroupMode_ = mode;
+
+        for (auto& group : groups_)
+            group = {};
+
+        for (auto& tail : tails_)
+            tail = {};
+
+        groupEnvelopes_.setNumGroups (getActiveGroupCount());
+        groupEnvelopes_.reset();
     }
 
     ActiveGroupMode getActiveGroupMode() const noexcept
@@ -128,6 +150,11 @@ public:
             default:
                 return 0;
         }
+    }
+
+    void setAttackRelease (float attackSeconds, float releaseSeconds) noexcept
+    {
+        groupEnvelopes_.setAttackRelease (attackSeconds, releaseSeconds);
     }
 
     std::uint64_t claimAllocationSerial() noexcept
@@ -241,10 +268,16 @@ public:
 
         selectedGroup.active = true;
         selectedGroup.gate = true;
-        selectedGroup.envelopeActive = true;
         selectedGroup.midiNote = midiNoteNumber;
         selectedGroup.frequencyHz = frequencyHz;
         selectedGroup.allocationSerial = claimAllocationSerial();
+
+        if (result.decision.action == NoteOnAction::StartIdleGroup)
+            groupEnvelopes_.noteOn (result.decision.groupIndex);
+        else
+            groupEnvelopes_.forceNoteOn (result.decision.groupIndex);
+
+        selectedGroup.envelopeActive = groupEnvelopes_.isEnvelopeActive (result.decision.groupIndex);
 
         return result;
     }
@@ -259,16 +292,28 @@ public:
         auto& voice = groups_[static_cast<std::size_t> (groupIndex)];
         voice.gate = false;
         voice.midiNote = -1;
+
+        groupEnvelopes_.noteOff (groupIndex);
+        voice.envelopeActive = groupEnvelopes_.isEnvelopeActive (groupIndex);
+
         return groupIndex;
     }
 
-    void setEnvelopeActive (int groupIndex, bool isActive) noexcept
+    float getNextEnvelopeSample (int groupIndex) noexcept
     {
+        const float sample = groupEnvelopes_.getNextSample (groupIndex);
         auto& voice = groups_[static_cast<std::size_t> (groupIndex)];
-        voice.envelopeActive = isActive;
+        voice.envelopeActive = groupEnvelopes_.isEnvelopeActive (groupIndex);
 
         if (! voice.gate && ! voice.envelopeActive)
             voice.active = false;
+
+        return sample;
+    }
+
+    bool isEnvelopeActive (int groupIndex) const noexcept
+    {
+        return groupEnvelopes_.isEnvelopeActive (groupIndex);
     }
 
     int startTailFromGroupState (const GroupVoiceState& sourceGroup,
@@ -350,6 +395,7 @@ private:
     std::uint64_t nextAllocationSerial_ = 1;
     std::array<GroupVoiceState, kMaxGroupVoices> groups_ {};
     std::array<TailVoiceState, kMaxTailVoices> tails_ {};
+    GroupEnvelopeManager groupEnvelopes_;
 };
 
 } // namespace westpatch::engine
