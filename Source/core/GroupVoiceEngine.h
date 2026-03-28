@@ -84,17 +84,16 @@ public:
 
     void reset() noexcept
     {
-        activeGroupMode_ = ActiveGroupMode::Unison;
-        nextAllocationSerial_ = 1;
+      nextAllocationSerial_ = 1;
 
-        for (auto& group : groups_)
-            group = {};
+      for (auto& group : groups_)
+        group = {};
 
-        for (auto& tail : tails_)
-            tail = {};
+      for (auto& tail : tails_)
+        tail = {};
 
-        groupEnvelopes_.setNumGroups (getActiveGroupCount());
-        groupEnvelopes_.reset();
+      groupEnvelopes_.setNumGroups (getActiveGroupCount());
+      groupEnvelopes_.reset();
     }
 
     void setActiveGroupMode (ActiveGroupMode mode) noexcept
