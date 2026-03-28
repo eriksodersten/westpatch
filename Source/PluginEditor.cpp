@@ -194,10 +194,16 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     addAndMakeVisible (complexFmAmountSlider);
 
     setupLabel (complexOscMixLabel, "Mix"); addAndMakeVisible (complexOscMixLabel);
-    setupKnob  (complexOscMixSlider, 0.0, 1.0, 0.001);
-    complexOscMixSlider.setValue (audioProcessor.complexOscMix, juce::dontSendNotification);
-    complexOscMixSlider.onValueChange = [this] { audioProcessor.complexOscMix = (float) complexOscMixSlider.getValue(); };
-    addAndMakeVisible (complexOscMixSlider);
+        setupKnob  (complexOscMixSlider, 0.0, 1.0, 0.001);
+        complexOscMixSlider.setValue (audioProcessor.complexOscMix, juce::dontSendNotification);
+        complexOscMixSlider.onValueChange = [this] { audioProcessor.complexOscMix = (float) complexOscMixSlider.getValue(); };
+        addAndMakeVisible (complexOscMixSlider);
+
+        setupLabel (oscShapeLabel, "Shape"); addAndMakeVisible (oscShapeLabel);
+        setupKnob  (oscShapeSlider, 0.0, 1.0, 0.001);
+        oscShapeSlider.setValue (audioProcessor.oscShape, juce::dontSendNotification);
+        oscShapeSlider.onValueChange = [this] { audioProcessor.oscShape = (float) oscShapeSlider.getValue(); };
+        addAndMakeVisible (oscShapeSlider);
 
     // Matrix
     auto setupMx = [this] (juce::Slider& s, int src, int dst)
@@ -449,27 +455,31 @@ void WestPatchAudioProcessorEditor::resized()
     }
 
     // ── Lane module ── x=838 w=234
-    {
-        const int mx = 838;
-        const int cx = mx + 117 - knobW / 2;
-        int y = 60;
-        const int gap = 92;
+        {
+            const int mx = 838;
+            const int cx = mx + 117 - knobW / 2;
+            int y = 56;
+            const int laneKnobH = 72;
+            const int laneGap   = 10;
 
-        detuneAmountLabel.setBounds   (cx, y, knobW, 14); y += 14;
-        detuneAmountSlider.setBounds  (cx, y, knobW, knobH); y += knobH + gap - 14;
+            detuneAmountLabel.setBounds   (cx, y, knobW, 14); y += 14;
+            detuneAmountSlider.setBounds  (cx, y, knobW, laneKnobH); y += laneKnobH + laneGap;
 
-        stereoSpreadLabel.setBounds   (cx, y, knobW, 14); y += 14;
-        stereoSpreadSlider.setBounds  (cx, y, knobW, knobH); y += knobH + gap - 14;
+            stereoSpreadLabel.setBounds   (cx, y, knobW, 14); y += 14;
+            stereoSpreadSlider.setBounds  (cx, y, knobW, laneKnobH); y += laneKnobH + laneGap;
 
-        complexModRatioLabel.setBounds (cx, y, knobW, 14); y += 14;
-        complexModRatioSlider.setBounds(cx, y, knobW, knobH); y += knobH + gap - 14;
+            complexModRatioLabel.setBounds (cx, y, knobW, 14); y += 14;
+            complexModRatioSlider.setBounds(cx, y, knobW, laneKnobH); y += laneKnobH + laneGap;
 
-        complexFmAmountLabel.setBounds (cx, y, knobW, 14); y += 14;
-        complexFmAmountSlider.setBounds(cx, y, knobW, knobH); y += knobH + gap - 14;
+            complexFmAmountLabel.setBounds (cx, y, knobW, 14); y += 14;
+            complexFmAmountSlider.setBounds(cx, y, knobW, laneKnobH); y += laneKnobH + laneGap;
 
-        complexOscMixLabel.setBounds   (cx, y, knobW, 14); y += 14;
-        complexOscMixSlider.setBounds  (cx, y, knobW, knobH);
-    }
+            complexOscMixLabel.setBounds   (cx, y, knobW, 14); y += 14;
+            complexOscMixSlider.setBounds  (cx, y, knobW, laneKnobH); y += laneKnobH + laneGap;
+
+            oscShapeLabel.setBounds  (cx, y, knobW, 14); y += 14;
+            oscShapeSlider.setBounds (cx, y, knobW, laneKnobH);
+        }
 
     // ── Matrix module ── x=1080 w=240
     {

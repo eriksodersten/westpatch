@@ -629,17 +629,18 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             const float laneLpgOutputEnv = toneModeBase;
 
             float laneOut = tail.lanes[laneIndex].renderComplex (
-                laneFreqHz,
-                complexModRatio,
-                complexFmAmount,
-                complexOscMix,
-                synthLevel,
-                juce::jmax (0.01f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
-                laneLpgCutoffEnv,
-                laneLpgOutputEnv,
-                lpgAmountSmoothed.getNextValue(),
-                tail.lpgCvMod,
-                0.0f);
+                            laneFreqHz,
+                            complexModRatio,
+                            complexFmAmount,
+                            complexOscMix,
+                            synthLevel,
+                            juce::jmax (0.01f, foldAmountSmoothed.getCurrentValue() + tail.foldModAmount),
+                            laneLpgCutoffEnv,
+                            laneLpgOutputEnv,
+                            lpgAmountSmoothed.getNextValue(),
+                            tail.lpgCvMod,
+                            0.0f,
+                            oscShape);
 
             laneOut *= tail.gain;
 
@@ -693,17 +694,18 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                 const float laneLpgOutputEnv = toneModeBase;
         
         float laneOut = lanes[laneIndex].renderComplex (
-            laneFreqHz,
-            complexModRatio,
-            complexFmAmount,
-            complexOscMix,
-            synthLevel,
-            foldValue,
-            laneLpgCutoffEnv,
-            laneLpgOutputEnv,
-            lpgAmountSmoothed.getNextValue(),
-            lpgCvMod,
-            noiseIn);
+                    laneFreqHz,
+                    complexModRatio,
+                    complexFmAmount,
+                    complexOscMix,
+                    synthLevel,
+                    foldValue,
+                    laneLpgCutoffEnv,
+                    laneLpgOutputEnv,
+                    lpgAmountSmoothed.getNextValue(),
+                    lpgCvMod,
+                    noiseIn,
+                    oscShape);
 
             const float laneOutPreAmp = laneOut;
 
@@ -850,8 +852,9 @@ void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     stream.writeFloat (complexFmAmount);
     stream.writeFloat (complexOscMix);
 
-    stream.writeInt (static_cast<int> (groupMode));
-    stream.writeInt (static_cast<int> (toneMode));
+    stream.writeFloat (oscShape);
+        stream.writeInt (static_cast<int> (groupMode));
+        stream.writeInt (0); // legacy toneMode placeholder
 
     for (int s = 0; s < numModSources; ++s)
         for (int d = 0; d < numModDestinations; ++d)
@@ -868,11 +871,11 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
     lpgAmount = stream.readFloat();
 
     modAttackTime = stream.readFloat();
-    modReleaseTime = stream.readFloat();
-    modDepth = stream.readFloat();
-    funcBRate = stream.readFloat();
-    funcBDepth = stream.readFloat();
-    stream.readBool(); // legacy placeholder
+        modReleaseTime = stream.readFloat();
+        modDepth = stream.readFloat();
+        stream.readFloat(); // legacy funcBRate
+        stream.readFloat(); // legacy funcBDepth
+        stream.readBool();  // legacy funcBCycle placeholder
 
     uncertaintyRate = stream.readFloat();
     uncertaintySmoothDepth = stream.readFloat();
@@ -895,22 +898,17 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
     complexOscMix = stream.readFloat();
 
     const int storedGroupMode = stream.readInt();
-    switch (storedGroupMode)
-    {
-        case 0: groupMode = GroupMode::Mono; break;
-        case 1: groupMode = GroupMode::Duo;  break;
-        case 2: groupMode = GroupMode::Quad; break;
-        default: groupMode = GroupMode::Mono; break;
-    }
+        switch (storedGroupMode)
+        {
+            case 0: groupMode = GroupMode::Mono; break;
+            case 1: groupMode = GroupMode::Duo;  break;
+            case 2: groupMode = GroupMode::Quad; break;
+            default: groupMode = GroupMode::Mono; break;
+        }
 
-    const int storedToneMode = stream.readInt();
-    switch (storedToneMode)
-    {
-        case 0: toneMode = ToneMode::West;   break;
-        case 1: toneMode = ToneMode::Moog;   break;
-        case 2: toneMode = ToneMode::Roland; break;
-        default: toneMode = ToneMode::West;  break;
-    }
+        stream.readInt(); // legacy toneMode
+        if (! stream.isExhausted())
+            oscShape = stream.readFloat();
 
     for (int s = 0; s < numModSources; ++s)
     {

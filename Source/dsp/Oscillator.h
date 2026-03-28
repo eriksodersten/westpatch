@@ -6,7 +6,7 @@ class Oscillator
 public:
     void prepare (double newSampleRate) noexcept;
     void reset() noexcept;
-    float process (float frequencyHz) noexcept;
+    float process (float frequencyHz, float shape = 0.0f) noexcept;
 
 private:
     static float triToSine (float tri) noexcept;

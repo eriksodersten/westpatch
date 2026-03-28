@@ -132,6 +132,7 @@ public:
     float complexModRatio = 2.0f;
     float complexFmAmount = 30.0f;
     float complexOscMix = 0.0f;
+        float oscShape = 0.0f;
 
     // Global modes
     GroupMode groupMode = GroupMode::Mono;

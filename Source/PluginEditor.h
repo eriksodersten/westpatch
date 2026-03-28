@@ -71,7 +71,9 @@ private:
     juce::Label complexFmAmountLabel;
     juce::Slider complexFmAmountSlider;
     juce::Label complexOscMixLabel;
-    juce::Slider complexOscMixSlider;
+        juce::Slider complexOscMixSlider;
+        juce::Label oscShapeLabel;
+        juce::Slider oscShapeSlider;
 
     // Matrix
     juce::Slider matrix281PitchSlider;
