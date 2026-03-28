@@ -7,6 +7,7 @@
 #include "core/SignalBus.h"
 #include "GroupEnvelopeManager.h"
 #include "dsp/NoiseSource.h"
+#include "dsp/LowPassGate.h"
 #include "dsp/WestPatchLane.h"
 #include "modulation/FunctionGenerator281.h"
 #include "modulation/Uncertainty266.h"
@@ -37,13 +38,6 @@ enum class GroupMode
     Quad
 };
 
-// Tone Mode är fortfarande globalt.
-enum class ToneMode
-{
-    West = 0,
-    Moog,
-    Roland
-};
 
 //==============================================================================
 class WestPatchAudioProcessor : public juce::AudioProcessor
@@ -100,6 +94,7 @@ public:
     // Lane sound params
     float foldAmount = 2.5f;
     float lpgAmount = 0.12f;
+        LowPassGate::Mode lpgMode = LowPassGate::Mode::Combo;
 
     // Global modulation / 281
     float modAttackTime = 0.02f;
@@ -136,7 +131,6 @@ public:
 
     // Global modes
     GroupMode groupMode = GroupMode::Mono;
-    ToneMode toneMode = ToneMode::West;
 
     void setGroupMode (GroupMode newMode) noexcept;
     int getActiveGroupCount() const noexcept;

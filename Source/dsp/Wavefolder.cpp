@@ -13,12 +13,13 @@ float Wavefolder::process (float input, float amount) noexcept
 
     const float driven = input * (1.0f + amount * 2.0f);
 
-        const float cell0 = foldCell (driven,  0.00f,  1.6f) *  0.55f;
-        const float cell1 = foldCell (driven,  0.90f,  1.3f) * -0.48f;
-        const float cell2 = foldCell (driven, -0.70f,  1.1f) * -0.42f;
-        const float cell3 = foldCell (driven,  1.90f,  1.2f) *  0.35f;
-        const float cell4 = foldCell (driven, -1.60f,  1.0f) *  0.28f;
+    const float bassReduce = 1.0f - amount * 0.4f;
+            const float cell0 = foldCell (driven,  0.00f,  1.6f) *  0.55f * bassReduce;
+            const float cell1 = foldCell (driven,  0.90f,  1.3f) * -0.48f;
+            const float cell2 = foldCell (driven, -0.70f,  1.1f) * -0.42f;
+            const float cell3 = foldCell (driven,  1.90f,  1.2f) *  0.35f;
+            const float cell4 = foldCell (driven, -1.60f,  1.0f) *  0.28f;
         const float direct = driven * 0.10f;
 
-        return (cell0 + cell1 + cell2 + cell3 + cell4 + direct) * 0.75f;
+    return (cell0 + cell1 + cell2 + cell3 + cell4 + direct) * 0.75f;
 }

@@ -512,8 +512,15 @@ void WestPatchAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
 void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, float& outR) noexcept
 {
-    foldAmountSmoothed.setTargetValue(foldAmount);
-        lpgAmountSmoothed.setTargetValue(lpgAmount);
+    foldAmountSmoothed.setTargetValue (foldAmount);
+        lpgAmountSmoothed.setTargetValue  (lpgAmount);
+
+    for (auto& lane : lanes)
+                lane.lpg.setMode (lpgMode);
+
+            for (int g = 0; g < getNumGroups(); ++g)
+                for (auto& lane : tails[g].lanes)
+                    lane.lpg.setMode (lpgMode);
     SignalBus bus;
 
     // 281 stays global
@@ -600,33 +607,15 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
             const float lanePitchSemitones = detuneSemitones + tail.pitchModSemitones;
             const float laneFreqHz = tailBaseFreq * std::pow (2.0f, lanePitchSemitones / 12.0f);
 
-            float toneModeBase = 1.0f;
-
-            switch (toneMode)
-            {
-                case ToneMode::West:
-                    toneModeBase = 1.0f;
-                    break;
-                case ToneMode::Moog:
-                    toneModeBase = 0.9f;
-                    break;
-                case ToneMode::Roland:
-                    toneModeBase = 0.8f;
-                    break;
-                default:
-                    toneModeBase = 1.0f;
-                    break;
-            }
-
             constexpr float groupToneCurve = 0.90f;
 
-            const float shapedTailToneEnv =
-                std::pow (juce::jlimit (0.0f, 1.0f, tail.gain), groupToneCurve);
+                        const float shapedTailToneEnv =
+                            std::pow (juce::jlimit (0.0f, 1.0f, tail.gain), groupToneCurve);
 
-            const float laneLpgCutoffEnv =
-                juce::jlimit (0.0f, 1.0f, shapedTailToneEnv * toneModeBase);
+                        const float laneLpgCutoffEnv =
+                            juce::jlimit (0.0f, 1.0f, shapedTailToneEnv);
 
-            const float laneLpgOutputEnv = toneModeBase;
+                        const float laneLpgOutputEnv = 1.0f;
 
             float laneOut = tail.lanes[laneIndex].renderComplex (
                             laneFreqHz,
@@ -669,29 +658,10 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
         const float foldValue = juce::jmax (0.01f, foldAmountSmoothed.getNextValue() + foldModAmount);
         const float noiseIn = noiseSource.process() * noiseLevel;
 
-        float toneModeBase = 1.0f;
-
-        switch (toneMode)
-        {
-            case ToneMode::West:
-                toneModeBase = 1.0f;
-                break;
-            case ToneMode::Moog:
-                toneModeBase = 0.9f;
-                break;
-            case ToneMode::Roland:
-                toneModeBase = 0.8f;
-                break;
-            default:
-                toneModeBase = 1.0f;
-                break;
-        }
-
         constexpr float groupToneCurve = 0.90f;
 
-        // groupEnv driver LPG-cutoff – vacState lägger till vactrol-tröghet ovanpå
-                const float laneLpgCutoffEnv = juce::jlimit (0.0f, 1.0f, groupEnv * toneModeBase);
-                const float laneLpgOutputEnv = toneModeBase;
+                const float laneLpgCutoffEnv = juce::jlimit (0.0f, 1.0f, groupEnv);
+                const float laneLpgOutputEnv = 1.0f;
         
         float laneOut = lanes[laneIndex].renderComplex (
                     laneFreqHz,
@@ -853,7 +823,8 @@ void WestPatchAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     stream.writeFloat (complexOscMix);
 
     stream.writeFloat (oscShape);
-        stream.writeInt (static_cast<int> (groupMode));
+        stream.writeInt   (static_cast<int> (lpgMode));
+        stream.writeInt   (static_cast<int> (groupMode));
         stream.writeInt (0); // legacy toneMode placeholder
 
     for (int s = 0; s < numModSources; ++s)
@@ -906,9 +877,20 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
             default: groupMode = GroupMode::Mono; break;
         }
 
-        stream.readInt(); // legacy toneMode
+    stream.readInt(); // legacy toneMode
         if (! stream.isExhausted())
             oscShape = stream.readFloat();
+        if (! stream.isExhausted())
+        {
+            const int storedLpgMode = stream.readInt();
+            switch (storedLpgMode)
+            {
+                case 0: lpgMode = LowPassGate::Mode::Lopass; break;
+                case 1: lpgMode = LowPassGate::Mode::Gate;   break;
+                case 2: lpgMode = LowPassGate::Mode::Combo;  break;
+                default: lpgMode = LowPassGate::Mode::Combo; break;
+            }
+        }
 
     for (int s = 0; s < numModSources; ++s)
     {

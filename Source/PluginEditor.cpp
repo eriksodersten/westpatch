@@ -61,10 +61,32 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     addAndMakeVisible (foldSlider);
 
     setupLabel (lpgLabel,  "LPG"); addAndMakeVisible (lpgLabel);
-    setupKnob  (lpgSlider, 0.0, 1.0, 0.001);
-    lpgSlider.setValue (audioProcessor.lpgAmount, juce::dontSendNotification);
-    lpgSlider.onValueChange = [this] { audioProcessor.lpgAmount = (float) lpgSlider.getValue(); };
-    addAndMakeVisible (lpgSlider);
+        setupKnob  (lpgSlider, 0.0, 1.0, 0.001);
+        lpgSlider.setValue (audioProcessor.lpgAmount, juce::dontSendNotification);
+        lpgSlider.onValueChange = [this] { audioProcessor.lpgAmount = (float) lpgSlider.getValue(); };
+        addAndMakeVisible (lpgSlider);
+
+        lpgModeBox.addItem ("Lopass", 1);
+        lpgModeBox.addItem ("Gate",   2);
+        lpgModeBox.addItem ("Combo",  3);
+        switch (audioProcessor.lpgMode)
+        {
+            case LowPassGate::Mode::Lopass: lpgModeBox.setSelectedId (1, juce::dontSendNotification); break;
+            case LowPassGate::Mode::Gate:   lpgModeBox.setSelectedId (2, juce::dontSendNotification); break;
+            case LowPassGate::Mode::Combo:  lpgModeBox.setSelectedId (3, juce::dontSendNotification); break;
+            default:                        lpgModeBox.setSelectedId (3, juce::dontSendNotification); break;
+        }
+        lpgModeBox.onChange = [this]
+        {
+            switch (lpgModeBox.getSelectedId())
+            {
+                case 1: audioProcessor.lpgMode = LowPassGate::Mode::Lopass; break;
+                case 2: audioProcessor.lpgMode = LowPassGate::Mode::Gate;   break;
+                case 3: audioProcessor.lpgMode = LowPassGate::Mode::Combo;  break;
+                default: break;
+            }
+        };
+        addAndMakeVisible (lpgModeBox);
 
     // 281
     setupLabel (mod281AttackLabel, "Attack"); addAndMakeVisible (mod281AttackLabel);
@@ -378,8 +400,9 @@ void WestPatchAudioProcessorEditor::resized()
         foldLabel.setBounds  (cx, y,          knobW, 14); y += 14;
         foldSlider.setBounds (cx, y,          knobW, knobH); y += knobH + gap - 14;
 
-        lpgLabel.setBounds  (cx, y,           knobW, 14); y += 14;
-        lpgSlider.setBounds (cx, y,           knobW, knobH);
+        lpgLabel.setBounds    (cx, y, knobW, 14); y += 14;
+                lpgSlider.setBounds   (cx, y, knobW, knobH);
+                lpgModeBox.setBounds  (cx + knobW + 4, y + (knobH / 2) - 10, 96, 20);
     }
 
     // ── 281 module ── x=196 w=320

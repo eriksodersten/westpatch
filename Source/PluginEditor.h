@@ -29,7 +29,8 @@ private:
     juce::Label foldLabel;
     juce::Slider foldSlider;
     juce::Label lpgLabel;
-    juce::Slider lpgSlider;
+        juce::Slider lpgSlider;
+        juce::ComboBox lpgModeBox;
 
     // 281
     juce::Label mod281AttackLabel;
