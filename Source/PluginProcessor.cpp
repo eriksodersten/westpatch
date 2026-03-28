@@ -866,31 +866,40 @@ void WestPatchAudioProcessor::setStateInformation (const void* data, int sizeInB
     stereoSpread = stream.readFloat();
     complexModRatio = stream.readFloat();
     complexFmAmount = stream.readFloat();
+
     complexOscMix = stream.readFloat();
 
-    const int storedGroupMode = stream.readInt();
-        switch (storedGroupMode)
-        {
-            case 0: groupMode = GroupMode::Mono; break;
-            case 1: groupMode = GroupMode::Duo;  break;
-            case 2: groupMode = GroupMode::Quad; break;
-            default: groupMode = GroupMode::Mono; break;
-        }
+    if (! stream.isExhausted())
+      oscShape = stream.readFloat();
 
-    stream.readInt(); // legacy toneMode
-        if (! stream.isExhausted())
-            oscShape = stream.readFloat();
-        if (! stream.isExhausted())
-        {
-            const int storedLpgMode = stream.readInt();
-            switch (storedLpgMode)
-            {
-                case 0: lpgMode = LowPassGate::Mode::Lopass; break;
-                case 1: lpgMode = LowPassGate::Mode::Gate;   break;
-                case 2: lpgMode = LowPassGate::Mode::Combo;  break;
-                default: lpgMode = LowPassGate::Mode::Combo; break;
-            }
-        }
+    if (! stream.isExhausted())
+    {
+      const int storedLpgMode = stream.readInt();
+
+      switch (storedLpgMode)
+      {
+      case 0: lpgMode = LowPassGate::Mode::Lopass; break;
+      case 1: lpgMode = LowPassGate::Mode::Gate; break;
+      case 2: lpgMode = LowPassGate::Mode::Combo; break;
+      default: lpgMode = LowPassGate::Mode::Combo; break;
+      }
+    }
+
+    if (! stream.isExhausted())
+    {
+      const int storedGroupMode = stream.readInt();
+
+      switch (storedGroupMode)
+      {
+      case 0: groupMode = GroupMode::Mono; break;
+      case 1: groupMode = GroupMode::Duo; break;
+      case 2: groupMode = GroupMode::Quad; break;
+      default: groupMode = GroupMode::Mono; break;
+      }
+    }
+
+    if (! stream.isExhausted())
+      stream.readInt(); // legacy toneMode
 
     for (int s = 0; s < numModSources; ++s)
     {
