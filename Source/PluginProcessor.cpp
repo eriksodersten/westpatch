@@ -336,6 +336,12 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 
             crossfades[groupIndex] = {};
 
+            for (int i = 0; i < numLanes; ++i)
+            {
+                if (laneToGroup (i) == groupIndex)
+                    lanes[i].resetDSPState();
+            }
+
             DBG ("TAIL START group=" + juce::String (groupIndex)
                  + " steal=" + juce::String (stealingActiveGroup ? 1 : 0)
                  + " gain=" + juce::String (tail.gain)
@@ -660,7 +666,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
 
         constexpr float groupToneCurve = 0.90f;
 
-                const float laneLpgCutoffEnv = juce::jlimit (0.0f, 1.0f, groupEnv);
+        const float laneLpgCutoffEnv = juce::jlimit (0.0f, 1.0f, groupEnv);
                 const float laneLpgOutputEnv = 1.0f;
         
         float laneOut = lanes[laneIndex].renderComplex (
