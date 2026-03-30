@@ -130,9 +130,15 @@ void WestPatchAudioProcessor::prepareToPlay (double sampleRate, int)
 
     previous266PulseHigh = false;
     resetGroups();
-    newEngine.reset();
-    newEngine.setAttackRelease (attackTime, releaseTime);
-}
+        newEngine.reset();
+        newEngine.setAttackRelease (attackTime, releaseTime);
+
+        for (int g = 0; g < maxGroups; ++g)
+        {
+            groups[g].glideSmoothed.reset (sampleRate, glideTime);
+            groups[g].glideSmoothed.setCurrentAndTargetValue (groups[g].frequencyHz);
+        }
+    }
 
 void WestPatchAudioProcessor::releaseResources()
 {
@@ -292,6 +298,13 @@ void WestPatchAudioProcessor::resetGroups() noexcept
         laneOutputCache[i] = 0.0f;
 }
 
+void WestPatchAudioProcessor::setGlideTime (float seconds) noexcept
+{
+    glideTime = seconds;
+    for (int g = 0; g < maxGroups; ++g)
+        groups[g].glideSmoothed.reset (currentSampleRate, seconds);
+}
+
 void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
 {
     const float frequencyHz = static_cast<float> (juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber));
@@ -369,7 +382,8 @@ void WestPatchAudioProcessor::noteOnToGroup (int midiNoteNumber) noexcept
     group.gate = true;
     group.midiNote = midiNoteNumber;
     group.frequencyHz = frequencyHz;
-    groupAllocationSerial[groupIndex] = nextAllocationSerial++;
+        groups[groupIndex].glideSmoothed.setTargetValue (frequencyHz);
+        groupAllocationSerial[groupIndex] = nextAllocationSerial++;
 
     // groupEnvelopeManager är inte längre source of truth för envelope.
         // newEngine.beginNoteOn() hanterar detta internt.
@@ -687,7 +701,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
 
         const float groupEnv = groupEnvValues[groupIndex];
 
-        const float baseFreq = group.frequencyHz > 0.0f ? group.frequencyHz : 440.0f;
+        const float baseFreq = groups[groupIndex].glideSmoothed.getNextValue();
 
         const float detuneSemitones = laneDetuneBase[laneIndex] * detuneAmount;
         const float lanePitchSemitones = detuneSemitones + pitchModSemitones;

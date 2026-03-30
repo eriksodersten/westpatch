@@ -86,7 +86,27 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
                 default: break;
             }
         };
-        addAndMakeVisible (lpgModeBox);
+    addAndMakeVisible (lpgModeBox);
+
+        setupLabel (glideLabel, "Glide"); addAndMakeVisible (glideLabel);
+        setupKnob  (glideSlider, 0.0, 2.0, 0.001);
+        glideSlider.setValue (audioProcessor.glideTime, juce::dontSendNotification);
+    glideSlider.onValueChange = [this]
+        {
+            if (glideToggle.getToggleState())
+                audioProcessor.setGlideTime ((float) glideSlider.getValue());
+        };
+        addAndMakeVisible (glideSlider);
+
+        glideToggle.setToggleState (audioProcessor.glideTime > 0.0f, juce::dontSendNotification);
+    glideToggle.onStateChange = [this]
+        {
+            if (glideToggle.getToggleState())
+                audioProcessor.setGlideTime ((float) glideSlider.getValue());
+            else
+                audioProcessor.setGlideTime (0.0f);
+        };
+        addAndMakeVisible (glideToggle);
 
     // 281
     setupLabel (mod281AttackLabel, "Attack"); addAndMakeVisible (mod281AttackLabel);
@@ -539,8 +559,13 @@ void WestPatchAudioProcessorEditor::resized()
         y += dH + 8;
 
         mod281LpgDepthLabel.setBounds (dX, y, labelW, dH);
-        mod281LpgDepthSlider.setBounds (dX + labelW, y, dW - labelW, dH);
-    }
+                mod281LpgDepthSlider.setBounds (dX + labelW, y, dW - labelW, dH);
+                y += dH + 16;
+
+                glideToggle.setBounds (dX, y, 60, 20);
+                glideLabel.setBounds  (dX + 68, y, knobW, 14);
+                glideSlider.setBounds (dX + 68, y + 14, knobW, knobH);
+            }
 
     // ── 266 module ── x=524 w=150
     {

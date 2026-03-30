@@ -95,7 +95,10 @@ private:
         juce::Slider matrix266SteppedMod281AttackSlider;
         juce::Slider matrix266SteppedMod281DecaySlider;
         juce::Slider func281SelfModSlider;
-        juce::Label  func281SelfModLabel;
+        juce::Label func281SelfModLabel;
+        juce::Label glideLabel;
+        juce::Slider glideSlider;
+        juce::ToggleButton glideToggle { "Glide" };
     
     void setupKnob (juce::Slider&, double min, double max, double interval);
     void setupDepthSlider (juce::Slider&);

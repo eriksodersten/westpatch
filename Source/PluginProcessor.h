@@ -130,6 +130,7 @@ public:
     // Lane spread / complex oscillator
     float detuneAmount = 0.0f;
     float stereoSpread = 0.60f;
+    float glideTime = 0.0f;   // sekunder, 0 = av
     float complexModRatio = 2.0f;
     float complexFmAmount = 30.0f;
     float complexOscMix = 0.0f;
@@ -139,7 +140,8 @@ public:
     GroupMode groupMode = GroupMode::Mono;
 
     void setGroupMode (GroupMode newMode) noexcept;
-    int getActiveGroupCount() const noexcept;
+        int getActiveGroupCount() const noexcept;
+        void setGlideTime (float seconds) noexcept;
 
     //==============================================================================
     // Mod matrix (still global)
