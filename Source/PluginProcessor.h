@@ -26,6 +26,8 @@ enum class ModDestination
     Pitch = 0,
     Fold,
     LPG,
+    Mod281Attack,
+    Mod281Decay,
     Count
 };
 
@@ -103,6 +105,7 @@ public:
     float funcBRate = 2.0f;
     float funcBDepth = 20.0f;
     FunctionGenerator281::Mode func281Mode = FunctionGenerator281::Mode::Transient;
+        float func281SelfModAmount = 0.0f;
     bool  func281SyncEnabled     = false;
             int   func281SyncAttackIndex = 6;
             int   func281SyncDecayIndex  = 6;
@@ -247,7 +250,8 @@ private:
     float laneDetuneBase[numLanes] = { -7.0f, -2.0f, 2.0f, 7.0f };
     float lanePanBase[numLanes]    = { -0.8f, -0.3f, 0.3f, 0.8f };
 
-    bool previous266PulseHigh = false;
+    bool  previous266PulseHigh = false;
+        float prev281Env = 0.0f;
 
     //==============================================================================
     // Helpers

@@ -80,15 +80,23 @@ private:
 
     // Matrix
     juce::Slider matrix281PitchSlider;
-    juce::Slider matrix281FoldSlider;
-    juce::Slider matrix281LpgSlider;
-    juce::Slider matrix266SmoothPitchSlider;
-    juce::Slider matrix266SmoothFoldSlider;
-    juce::Slider matrix266SmoothLpgSlider;
-    juce::Slider matrix266SteppedPitchSlider;
-    juce::Slider matrix266SteppedFoldSlider;
-    juce::Slider matrix266SteppedLpgSlider;
-
+        juce::Slider matrix281FoldSlider;
+        juce::Slider matrix281LpgSlider;
+        juce::Slider matrix281Mod281AttackSlider;
+        juce::Slider matrix281Mod281DecaySlider;
+        juce::Slider matrix266SmoothPitchSlider;
+        juce::Slider matrix266SmoothFoldSlider;
+        juce::Slider matrix266SmoothLpgSlider;
+        juce::Slider matrix266SmoothMod281AttackSlider;
+        juce::Slider matrix266SmoothMod281DecaySlider;
+        juce::Slider matrix266SteppedPitchSlider;
+        juce::Slider matrix266SteppedFoldSlider;
+        juce::Slider matrix266SteppedLpgSlider;
+        juce::Slider matrix266SteppedMod281AttackSlider;
+        juce::Slider matrix266SteppedMod281DecaySlider;
+        juce::Slider func281SelfModSlider;
+        juce::Label  func281SelfModLabel;
+    
     void setupKnob (juce::Slider&, double min, double max, double interval);
     void setupDepthSlider (juce::Slider&);
     void setupMatrixSlider (juce::Slider&);

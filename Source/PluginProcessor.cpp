@@ -548,7 +548,21 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
                         decay281Seconds  = (float) (60.0 / bpm) * syncRatios[func281SyncDecayIndex];
         }
 
-        const float global281Env = functionGenerator281.process (attack281Seconds, decay281Seconds);
+    // Self-mod – multiplikativ, en samples fördröjning via prev281Env
+            const float selfMod = 1.0f + func281SelfModAmount * prev281Env;
+            attack281Seconds *= selfMod;
+            decay281Seconds  *= selfMod;
+
+            // Matris-routing för Mod281Attack och Mod281Decay
+            attack281Seconds *= (1.0f + modulationMatrix[static_cast<int> (ModSource::FunctionB)][static_cast<int> (ModDestination::Mod281Attack)] * prev281Env);
+            decay281Seconds  *= (1.0f + modulationMatrix[static_cast<int> (ModSource::FunctionB)][static_cast<int> (ModDestination::Mod281Decay)] * prev281Env);
+
+            attack281Seconds = juce::jmax (0.001f, attack281Seconds);
+            decay281Seconds  = juce::jmax (0.001f, decay281Seconds);
+
+            const float global281Env = functionGenerator281.process (attack281Seconds, decay281Seconds);
+            prev281Env = global281Env;
+    
     bus.modEnv = global281Env;
 
     // 266 stays global

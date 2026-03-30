@@ -12,7 +12,7 @@ static const juce::Colour kScrew     { 0x33ffffff };
 WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (1340, 820);
+    setSize (1500, 820);
 
     backgroundImage = juce::ImageFileFormat::loadFrom (
         WestPatchBinaryData::background_jpg,
@@ -261,15 +261,34 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
         const int dstF  = (int) ModDestination::Fold;
         const int dstL  = (int) ModDestination::LPG;
 
-    setupMx (matrix281PitchSlider,         srcB,  dstP);
-        setupMx (matrix281FoldSlider,          srcB,  dstF);
-        setupMx (matrix281LpgSlider,           srcB,  dstL);
-        setupMx (matrix266SmoothPitchSlider,   srcUS, dstP);
-        setupMx (matrix266SmoothFoldSlider,    srcUS, dstF);
-        setupMx (matrix266SmoothLpgSlider,     srcUS, dstL);
-        setupMx (matrix266SteppedPitchSlider,  srcUT, dstP);
-        setupMx (matrix266SteppedFoldSlider,   srcUT, dstF);
-        setupMx (matrix266SteppedLpgSlider,    srcUT, dstL);
+    const int dstA  = (int) ModDestination::Mod281Attack;
+            const int dstD  = (int) ModDestination::Mod281Decay;
+
+            setupMx (matrix281PitchSlider,              srcB,  dstP);
+            setupMx (matrix281FoldSlider,               srcB,  dstF);
+            setupMx (matrix281LpgSlider,                srcB,  dstL);
+            setupMx (matrix281Mod281AttackSlider,        srcB,  dstA);
+            setupMx (matrix281Mod281DecaySlider,         srcB,  dstD);
+            setupMx (matrix266SmoothPitchSlider,        srcUS, dstP);
+            setupMx (matrix266SmoothFoldSlider,         srcUS, dstF);
+            setupMx (matrix266SmoothLpgSlider,          srcUS, dstL);
+            setupMx (matrix266SmoothMod281AttackSlider, srcUS, dstA);
+            setupMx (matrix266SmoothMod281DecaySlider,  srcUS, dstD);
+            setupMx (matrix266SteppedPitchSlider,       srcUT, dstP);
+            setupMx (matrix266SteppedFoldSlider,        srcUT, dstF);
+            setupMx (matrix266SteppedLpgSlider,         srcUT, dstL);
+            setupMx (matrix266SteppedMod281AttackSlider,srcUT, dstA);
+            setupMx (matrix266SteppedMod281DecaySlider, srcUT, dstD);
+
+        // Self-mod knob i 281-modulen
+        setupLabel (func281SelfModLabel, "Self"); addAndMakeVisible (func281SelfModLabel);
+        setupKnob  (func281SelfModSlider, -1.0, 2.0, 0.01);
+        func281SelfModSlider.setValue (audioProcessor.func281SelfModAmount, juce::dontSendNotification);
+        func281SelfModSlider.onValueChange = [this]
+        {
+            audioProcessor.func281SelfModAmount = (float) func281SelfModSlider.getValue();
+        };
+        addAndMakeVisible (func281SelfModSlider);
 }
 
 WestPatchAudioProcessorEditor::~WestPatchAudioProcessorEditor() = default;
@@ -378,7 +397,7 @@ void WestPatchAudioProcessorEditor::paint (juce::Graphics& g)
     drawModule (g, { 524, 38, 150, 760 }, "266");
     drawModule (g, { 682, 38, 148, 760 }, "Mixer");
     drawModule (g, { 838, 38, 234, 760 }, "Lane");
-    drawModule (g, { 1080,38, 240, 760 }, "Matrix");
+    drawModule (g, { 1060,38, 420, 760 }, "Matrix");
 
     // logo
     g.setColour (juce::Colours::white.withAlpha (0.55f));
@@ -386,12 +405,40 @@ void WestPatchAudioProcessorEditor::paint (juce::Graphics& g)
     g.drawFittedText ("WESTPATCH", 20, 8, 300, 22,
                       juce::Justification::centredLeft, 1);
 
-    // matrix column guides
-    g.setColour (juce::Colours::white.withAlpha (0.08f));
-    const int mx0 = 1080 + 20 + 52;
-    const int colW = 56;
-    for (int i = 0; i < 3; ++i)
-        g.drawVerticalLine (mx0 + i * colW + 28, 38 + 60, 38 + 720);
+    // matrix legend
+        {
+            const int mx0    = 1060 + 20;
+            const int srcW   = 52;
+            const int colW   = 48;
+            const int rowGap = 88;
+            const int slH    = 80;
+            const int slW    = 38;
+            const int startY = 38 + 74;
+
+            g.setFont (juce::FontOptions (9.0f));
+
+            // Kolumnlabels
+            const char* colLabels[] = { "Pitch", "Fold", "LPG", "A-time", "D-time" };
+                    g.setColour (juce::Colours::white.withAlpha (0.4f));
+                    for (int i = 0; i < 5; ++i)
+                        g.drawFittedText (colLabels[i],
+                                                      mx0 + srcW + i * colW - 4, startY - 38,
+                                                      colW + 8, 14,
+                                                      juce::Justification::centred, 1);
+
+            // Radlabels
+            const char* rowLabels[] = { "281", "Smooth", "Stepped" };
+            for (int r = 0; r < 3; ++r)
+                g.drawFittedText (rowLabels[r],
+                                  mx0, startY + r * rowGap + slH / 2 - 6,
+                                  srcW - 4, 12,
+                                  juce::Justification::centredRight, 1);
+
+            // Vertikala separatorlinjer
+            g.setColour (juce::Colours::white.withAlpha (0.08f));
+            for (int i = 0; i < 5; ++i)
+                g.drawVerticalLine (mx0 + srcW + i * colW + slW, startY, startY + 3 * rowGap);
+        }
 }
 
 void WestPatchAudioProcessorEditor::updateSyncMode()
@@ -471,9 +518,13 @@ void WestPatchAudioProcessorEditor::resized()
                 y += 32;
 
         func281SyncButton.setBounds (mx + 14, y, 52, 24);
-                        y += 32;
+                                y += 32;
 
-        // Depth sliders
+                        func281SelfModLabel.setBounds  (mx + 14, y, 44, 14);
+                        func281SelfModSlider.setBounds (mx + 14, y + 14, 64, 64);
+                        y += 82;
+
+                // Depth sliders
         const int dW = 280;
         const int dH = 28;
         const int dX = mx + 14;
@@ -556,27 +607,33 @@ void WestPatchAudioProcessorEditor::resized()
 
     // ── Matrix module ── x=1080 w=240
     {
-        const int mx = 1080;
-        const int innerX = mx + 20;
-        const int srcW = 52;
-        const int slW = 44;
-        const int slH = 80;
-        const int colW = 56;
+        const int mx = 1060;
+                const int innerX = mx + 20;
+                const int srcW = 52;
+                const int slW = 38;
+                const int slH = 80;
+                const int colW = 48;
         const int rowGap = 88;
-        int y = 58;
+                int y = 74;
 
-        matrix281PitchSlider.setBounds        (innerX + srcW + 0 * colW, y, slW, slH);
-        matrix281FoldSlider.setBounds         (innerX + srcW + 1 * colW, y, slW, slH);
-        matrix281LpgSlider.setBounds          (innerX + srcW + 2 * colW, y, slW, slH);
-        y += rowGap;
+        matrix281PitchSlider.setBounds              (innerX + srcW + 0 * colW, y, slW, slH);
+                matrix281FoldSlider.setBounds               (innerX + srcW + 1 * colW, y, slW, slH);
+                matrix281LpgSlider.setBounds                (innerX + srcW + 2 * colW, y, slW, slH);
+                matrix281Mod281AttackSlider.setBounds        (innerX + srcW + 3 * colW, y, slW, slH);
+                matrix281Mod281DecaySlider.setBounds         (innerX + srcW + 4 * colW, y, slW, slH);
+                y += rowGap;
 
-        matrix266SmoothPitchSlider.setBounds  (innerX + srcW + 0 * colW, y, slW, slH);
-        matrix266SmoothFoldSlider.setBounds   (innerX + srcW + 1 * colW, y, slW, slH);
-        matrix266SmoothLpgSlider.setBounds    (innerX + srcW + 2 * colW, y, slW, slH);
-        y += rowGap;
+                matrix266SmoothPitchSlider.setBounds        (innerX + srcW + 0 * colW, y, slW, slH);
+                matrix266SmoothFoldSlider.setBounds         (innerX + srcW + 1 * colW, y, slW, slH);
+                matrix266SmoothLpgSlider.setBounds          (innerX + srcW + 2 * colW, y, slW, slH);
+                matrix266SmoothMod281AttackSlider.setBounds (innerX + srcW + 3 * colW, y, slW, slH);
+                matrix266SmoothMod281DecaySlider.setBounds  (innerX + srcW + 4 * colW, y, slW, slH);
+                y += rowGap;
 
-        matrix266SteppedPitchSlider.setBounds (innerX + srcW + 0 * colW, y, slW, slH);
-        matrix266SteppedFoldSlider.setBounds  (innerX + srcW + 1 * colW, y, slW, slH);
-        matrix266SteppedLpgSlider.setBounds   (innerX + srcW + 2 * colW, y, slW, slH);
+                matrix266SteppedPitchSlider.setBounds       (innerX + srcW + 0 * colW, y, slW, slH);
+                matrix266SteppedFoldSlider.setBounds        (innerX + srcW + 1 * colW, y, slW, slH);
+                matrix266SteppedLpgSlider.setBounds         (innerX + srcW + 2 * colW, y, slW, slH);
+                matrix266SteppedMod281AttackSlider.setBounds(innerX + srcW + 3 * colW, y, slW, slH);
+                matrix266SteppedMod281DecaySlider.setBounds (innerX + srcW + 4 * colW, y, slW, slH);
     }
 }
