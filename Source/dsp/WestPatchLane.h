@@ -8,22 +8,30 @@
 struct WestPatchLane
 {
     Oscillator carrierOsc;
-    Oscillator modOsc;
-    Wavefolder wavefolder;
-    LowPassGate lpg;
-    float frequency = 440.0f;
+        Oscillator modOsc;
+        Wavefolder wavefolder;
+        LowPassGate lpg;
+        float frequency = 440.0f;
+
+        // DC-blocker state (single-pole highpass ~5 Hz)
+        float dcX = 0.0f;
+        float dcY = 0.0f;
 
     void reset()
-            {
-                carrierOsc.reset();
-                modOsc.reset();
-                lpg.reset();
-            }
+                {
+                    carrierOsc.reset();
+                    modOsc.reset();
+                    lpg.reset();
+                    dcX = 0.0f;
+                    dcY = 0.0f;
+                }
 
-        void resetDSPState()
-            {
-                lpg.reset();
-            }
+    void resetDSPState()
+                {
+                    lpg.reset();
+                    dcX = 0.0f;
+                    dcY = 0.0f;
+                }
     void prepare (double sampleRate);
 
     float renderComplex (float carrierFrequencyHz,
@@ -74,8 +82,14 @@ struct WestPatchLane
             dynamicFold
         );
 
-        return lpg.process (
-            synthFolded + noiseFolded,
+        // DC-blocker: y[n] = x[n] - x[n-1] + R * y[n-1], R ≈ 1 - (2π*5/44100)
+                const float dcIn = synthFolded + noiseFolded;
+                constexpr float R = 0.99929f; // 2π*5/44100
+                dcY = dcIn - dcX + R * dcY;
+                dcX = dcIn;
+
+                return lpg.process (
+                    dcY,
             lpgCutoffEnvelope,
             lpgOutputEnvelope,
             lpgAmount,
