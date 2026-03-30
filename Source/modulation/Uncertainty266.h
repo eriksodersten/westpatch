@@ -34,9 +34,11 @@ private:
     float smoothTarget = 0.0f;
 
     float steppedValue = 0.0f;
+        float prevSteppedTarget = 0.0f;
 
-    float biasValue = 0.0f;
-    float biasTarget = 0.0f;
+        float biasValue = 0.0f;
+        float biasTarget = 0.0f;
+        float prevSmoothTarget = 0.0f;
 
     float pulseValue = 0.0f;
 

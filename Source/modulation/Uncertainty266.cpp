@@ -18,9 +18,11 @@ void Uncertainty266::reset() noexcept
     smoothTarget = 0.0f;
 
     steppedValue = 0.0f;
+        prevSteppedTarget = 0.0f;
 
-    biasValue = 0.0f;
-    biasTarget = 0.0f;
+        biasValue = 0.0f;
+        biasTarget = 0.0f;
+        prevSmoothTarget = 0.0f;
 
     pulseValue = 0.0f;
 
@@ -85,26 +87,24 @@ Uncertainty266::Outputs Uncertainty266::process (const Params& params) noexcept
         if (biasChance < 0.35f)
             biasTarget = nextCenterWeighted() * 0.75f * clampedSpread;
 
-        // Smooth target
-        {
-            const float independent = nextCenterWeighted() * clampedSpread;
-            const float correlated  = biasTarget;
+        // Smooth target – korrelation med föregående target (autentisk 266-logik)
+                {
+                    const float independent = nextCenterWeighted() * clampedSpread;
+                    smoothTarget =
+                        (independent       * (1.0f - clampedCorrelation)) +
+                        (prevSmoothTarget   * clampedCorrelation);
+                    prevSmoothTarget = smoothTarget;
+                }
 
-            smoothTarget =
-                (independent * (1.0f - clampedCorrelation)) +
-                (correlated  * clampedCorrelation);
-        }
-
-        // Stepped value
-        {
-            const float independent = nextCenterWeighted() * clampedSpread;
-            const float correlated  = biasTarget;
-
-            steppedValue =
-                ((independent * (1.0f - clampedCorrelation)) +
-                 (correlated  * clampedCorrelation))
-                * clampedSteppedAmt;
-        }
+                // Stepped value – korrelation med föregående steg
+                {
+                    const float independent = nextCenterWeighted() * clampedSpread;
+                    const float newTarget =
+                        (independent        * (1.0f - clampedCorrelation)) +
+                        (prevSteppedTarget  * clampedCorrelation);
+                    prevSteppedTarget = newTarget;
+                    steppedValue = newTarget * clampedSteppedAmt;
+                }
 
         // Trigger pulse
         pulseValue = 1.0f;
