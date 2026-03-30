@@ -103,6 +103,9 @@ public:
     float funcBRate = 2.0f;
     float funcBDepth = 20.0f;
     FunctionGenerator281::Mode func281Mode = FunctionGenerator281::Mode::Transient;
+    bool  func281SyncEnabled     = false;
+            int   func281SyncAttackIndex = 6;
+            int   func281SyncDecayIndex  = 6;
 
     // Global 266
     float uncertaintyRate = 0.0f;

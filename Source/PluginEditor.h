@@ -38,6 +38,8 @@ private:
     juce::Label mod281DecayLabel;
     juce::Slider mod281DecaySlider;
     juce::ComboBox func281ModeBox;
+    juce::TextButton func281SyncButton { "Sync" };
+        void updateSyncMode();
     juce::Label mod281PitchDepthLabel;
     juce::Slider mod281PitchDepthSlider;
     juce::Label mod281FoldDepthLabel;

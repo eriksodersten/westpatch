@@ -92,19 +92,25 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     setupLabel (mod281AttackLabel, "Attack"); addAndMakeVisible (mod281AttackLabel);
     setupKnob  (mod281AttackSlider, 0.0, 1.0, 0.001);
         mod281AttackSlider.setValue (std::log10 (audioProcessor.modAttackTime / 0.001) / 4.0, juce::dontSendNotification);
-        mod281AttackSlider.onValueChange = [this]
-        {
-            audioProcessor.modAttackTime = 0.001f * std::pow (10.0f, (float) mod281AttackSlider.getValue() * 4.0f);
-        };
+    mod281AttackSlider.onValueChange = [this]
+            {
+                if (audioProcessor.func281SyncEnabled)
+                    audioProcessor.func281SyncAttackIndex = juce::roundToInt (mod281AttackSlider.getValue() * 12.0);
+                else
+                    audioProcessor.modAttackTime = 0.001f * std::pow (10.0f, (float) mod281AttackSlider.getValue() * 4.0f);
+            };
     addAndMakeVisible (mod281AttackSlider);
 
     setupLabel (mod281DecayLabel, "Decay"); addAndMakeVisible (mod281DecayLabel);
     setupKnob  (mod281DecaySlider, 0.0, 1.0, 0.001);
         mod281DecaySlider.setValue (std::log10 (audioProcessor.modReleaseTime / 0.001) / 4.0, juce::dontSendNotification);
-        mod281DecaySlider.onValueChange = [this]
-        {
-            audioProcessor.modReleaseTime = 0.001f * std::pow (10.0f, (float) mod281DecaySlider.getValue() * 4.0f);
-        };
+    mod281DecaySlider.onValueChange = [this]
+            {
+                if (audioProcessor.func281SyncEnabled)
+                    audioProcessor.func281SyncDecayIndex = juce::roundToInt (mod281DecaySlider.getValue() * 12.0);
+                else
+                    audioProcessor.modReleaseTime = 0.001f * std::pow (10.0f, (float) mod281DecaySlider.getValue() * 4.0f);
+            };
     addAndMakeVisible (mod281DecaySlider);
 
     func281ModeBox.addItem ("Transient", 1);
@@ -128,6 +134,18 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
         }
     };
     addAndMakeVisible (func281ModeBox);
+
+    func281SyncButton.setClickingTogglesState (true);
+        func281SyncButton.setToggleState (audioProcessor.func281SyncEnabled, juce::dontSendNotification);
+        func281SyncButton.setColour (juce::TextButton::buttonOnColourId, juce::Colours::orange);
+        func281SyncButton.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        func281SyncButton.onClick = [this]
+        {
+            audioProcessor.func281SyncEnabled = func281SyncButton.getToggleState();
+            updateSyncMode();
+        };
+        addAndMakeVisible (func281SyncButton);
+
 
     setupLabel (mod281PitchDepthLabel, "Pitch"); addAndMakeVisible (mod281PitchDepthLabel);
     setupDepthSlider (mod281PitchDepthSlider);
@@ -376,6 +394,35 @@ void WestPatchAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawVerticalLine (mx0 + i * colW + 28, 38 + 60, 38 + 720);
 }
 
+void WestPatchAudioProcessorEditor::updateSyncMode()
+{
+    const bool sync = audioProcessor.func281SyncEnabled;
+    if (sync)
+    {
+        static const char* ratioNames[] =
+                    { "1/8","1/7","1/5","1/4","1/3","1/2","1","2","3","4","5","7","8" };
+
+                mod281AttackSlider.setRange (0.0, 12.0, 1.0);
+                mod281AttackSlider.setValue (audioProcessor.func281SyncAttackIndex, juce::dontSendNotification);
+                mod281AttackSlider.textFromValueFunction = [](double v)
+                    { return juce::String (ratioNames[juce::jlimit (0, 12, (int) v)]); };
+
+                mod281DecaySlider.setRange (0.0, 12.0, 1.0);
+                mod281DecaySlider.setValue (audioProcessor.func281SyncDecayIndex, juce::dontSendNotification);
+                mod281DecaySlider.textFromValueFunction = [](double v)
+                    { return juce::String (ratioNames[juce::jlimit (0, 12, (int) v)]); };
+    }
+    else
+    {
+        mod281AttackSlider.textFromValueFunction = nullptr;
+                mod281AttackSlider.setRange (0.0, 1.0, 0.001);
+                mod281AttackSlider.setValue (std::log10 (audioProcessor.modAttackTime / 0.001) / 4.0, juce::dontSendNotification);
+                mod281DecaySlider.textFromValueFunction = nullptr;
+                mod281DecaySlider.setRange (0.0, 1.0, 0.001);
+                mod281DecaySlider.setValue (std::log10 (audioProcessor.modReleaseTime / 0.001) / 4.0, juce::dontSendNotification);
+    }
+}
+
 void WestPatchAudioProcessorEditor::resized()
 {
     // Top bar – group mode
@@ -421,7 +468,10 @@ void WestPatchAudioProcessorEditor::resized()
 
         // Mode selector
         func281ModeBox.setBounds (mx + 14, y, 180, 24);
-        y += 36;
+                y += 32;
+
+        func281SyncButton.setBounds (mx + 14, y, 52, 24);
+                        y += 32;
 
         // Depth sliders
         const int dW = 280;

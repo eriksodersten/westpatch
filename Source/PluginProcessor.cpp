@@ -530,7 +530,25 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     SignalBus bus;
 
     // 281 stays global
-    const float global281Env = functionGenerator281.process (modAttackTime, modReleaseTime);
+    static constexpr float syncRatios[] =
+            { 1/8.f, 1/7.f, 1/5.f, 1/4.f, 1/3.f, 1/2.f, 1.f, 2.f, 3.f, 4.f, 5.f, 7.f, 8.f };
+
+        float attack281Seconds = modAttackTime;
+        float decay281Seconds  = modReleaseTime;
+
+        if (func281SyncEnabled && func281Mode == FunctionGenerator281::Mode::Cycle)
+        {
+            double bpm = 120.0;
+            if (auto* ph = getPlayHead())
+                if (auto pos = ph->getPosition())
+                    if (auto b = pos->getBpm())
+                        bpm = *b;
+
+            attack281Seconds = (float) (60.0 / bpm) * syncRatios[func281SyncAttackIndex];
+                        decay281Seconds  = (float) (60.0 / bpm) * syncRatios[func281SyncDecayIndex];
+        }
+
+        const float global281Env = functionGenerator281.process (attack281Seconds, decay281Seconds);
     bus.modEnv = global281Env;
 
     // 266 stays global
