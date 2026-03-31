@@ -114,6 +114,7 @@ public:
     float uncertaintyRate = 0.0f;
     float uncertaintySmoothDepth = 0.8f;
     float uncertaintySteppedDepth = 8.0f;
+        float uncertaintySlewTime = 0.0f;
 
     // Mixer
     float synthLevel = 1.0f;

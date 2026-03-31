@@ -53,7 +53,9 @@ private:
     juce::Label uncertaintySmoothLabel;
     juce::Slider uncertaintySmoothSlider;
     juce::Label uncertaintySteppedLabel;
-    juce::Slider uncertaintySteppedSlider;
+        juce::Slider uncertaintySteppedSlider;
+        juce::Label uncertaintySlewLabel;
+        juce::Slider uncertaintySlewSlider;
 
     // Mixer
     juce::Label synthLevelLabel;

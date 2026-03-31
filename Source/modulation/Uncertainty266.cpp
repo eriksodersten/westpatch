@@ -18,7 +18,8 @@ void Uncertainty266::reset() noexcept
     smoothTarget = 0.0f;
 
     steppedValue = 0.0f;
-        prevSteppedTarget = 0.0f;
+        steppedSlewed = 0.0f;
+            prevSteppedTarget = 0.0f;
 
         biasValue = 0.0f;
         biasTarget = 0.0f;
@@ -130,8 +131,19 @@ Uncertainty266::Outputs Uncertainty266::process (const Params& params) noexcept
         pulseValue = 0.0f;
 
     //====================================================
-    out.smooth  = smoothValue * clampedSmoothAmt;
-    out.stepped = steppedValue;
+    // Integrator – slew på stepped-output (autentisk 266-funktion)
+        if (params.slewTime > 0.0001f)
+        {
+            const float coeff = 1.0f - std::exp (-1.0f / (params.slewTime * static_cast<float> (sampleRate)));
+            steppedSlewed += coeff * (steppedValue - steppedSlewed);
+        }
+        else
+        {
+            steppedSlewed = steppedValue;
+        }
+
+        out.smooth  = smoothValue * clampedSmoothAmt;
+        out.stepped = steppedSlewed;
     out.bias    = biasValue;
     out.pulse   = pulseValue;
 

@@ -587,6 +587,7 @@ void WestPatchAudioProcessor::renderSample (float inputSample, float& outL, floa
     uncertaintyParams.density = 0.5f;
     uncertaintyParams.correlation = 0.5f;
     uncertaintyParams.spread = 1.0f;
+        uncertaintyParams.slewTime = uncertaintySlewTime;
 
     const auto uncertaintyOut = uncertainty266.process (uncertaintyParams);
 

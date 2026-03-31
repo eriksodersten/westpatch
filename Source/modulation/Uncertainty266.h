@@ -10,8 +10,9 @@ public:
         float steppedAmount = 0.5f;
         float density = 0.5f;
         float correlation = 0.5f;
-        float spread = 1.0f;
-    };
+                float spread = 1.0f;
+                float slewTime = 0.0f;  // sekunder, 0 = ingen slew
+            };
 
     struct Outputs
     {
@@ -34,6 +35,7 @@ private:
     float smoothTarget = 0.0f;
 
     float steppedValue = 0.0f;
+        float steppedSlewed = 0.0f;
         float prevSteppedTarget = 0.0f;
 
         float biasValue = 0.0f;

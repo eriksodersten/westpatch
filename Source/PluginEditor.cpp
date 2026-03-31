@@ -204,6 +204,12 @@ WestPatchAudioProcessorEditor::WestPatchAudioProcessorEditor (WestPatchAudioProc
     uncertaintySteppedSlider.onValueChange = [this] { audioProcessor.uncertaintySteppedDepth = (float) uncertaintySteppedSlider.getValue(); };
     addAndMakeVisible (uncertaintySteppedSlider);
 
+        setupLabel (uncertaintySlewLabel, "Slew"); addAndMakeVisible (uncertaintySlewLabel);
+        setupKnob  (uncertaintySlewSlider, 0.0, 2.0, 0.001);
+        uncertaintySlewSlider.setValue (audioProcessor.uncertaintySlewTime, juce::dontSendNotification);
+        uncertaintySlewSlider.onValueChange = [this] { audioProcessor.uncertaintySlewTime = (float) uncertaintySlewSlider.getValue(); };
+        addAndMakeVisible (uncertaintySlewSlider);
+
     // Mixer
     setupLabel (synthLevelLabel, "Synth"); addAndMakeVisible (synthLevelLabel);
     setupKnob  (synthLevelSlider, 0.0, 1.0, 0.001);
@@ -581,8 +587,11 @@ void WestPatchAudioProcessorEditor::resized()
         uncertaintySmoothSlider.setBounds (cx, y, knobW, knobH); y += knobH + gap - 14;
 
         uncertaintySteppedLabel.setBounds  (cx, y, knobW, 14); y += 14;
-        uncertaintySteppedSlider.setBounds (cx, y, knobW, knobH);
-    }
+                uncertaintySteppedSlider.setBounds (cx, y, knobW, knobH); y += knobH + gap - 14;
+
+                uncertaintySlewLabel.setBounds  (cx, y, knobW, 14); y += 14;
+                uncertaintySlewSlider.setBounds (cx, y, knobW, knobH);
+            }
 
     // ── Mixer module ── x=682 w=148
     {
